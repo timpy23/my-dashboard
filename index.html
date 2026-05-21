@@ -529,6 +529,17 @@ function showError(msg) {
   _errTimer = setTimeout(() => t.classList.remove('show'), 5000);
 }
 
+// === SUPABASE QUERY WITH TIMEOUT ===
+// Turns a silently-hanging request (e.g. paused project) into a visible error
+function sbQuery(q) {
+  return Promise.race([
+    q,
+    new Promise((_, rej) =>
+      setTimeout(() => rej(new Error('Request timed out — your Supabase project may be paused. Go to supabase.com/dashboard and look for a "Resume project" button.')), 10000)
+    )
+  ]);
+}
+
 // === DEBOUNCE (for oninput DB writes) ===
 const _debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 const _dbGoal = _debounce((id, val) => sb.from('goals').update({ current: parseFloat(val) || 0 }).eq('id', id), 600);
@@ -563,7 +574,11 @@ function pickColor(el, c) {
 
 // === HEALTH ===
 async function saveHealth() {
-  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  const btn = document.querySelector('#healthModal .btn-primary');
+  const orig = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
+  if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
     const entry = {
       user_id: currentUser.id,
@@ -574,13 +589,13 @@ async function saveHealth() {
       mood: parseInt(document.getElementById('h-mood').value) || null,
       notes: document.getElementById('h-notes').value
     };
-    const { data, error } = await sb.from('health').insert(entry).select().single();
+    const { data, error } = await sbQuery(sb.from('health').insert(entry).select().single());
     if (error) throw error;
     state.health.unshift(data);
-    closeModal('healthModal');
+    closeModal('healthModal'); resetBtn();
     ['h-steps','h-water','h-weight','h-mood','h-notes'].forEach(id => document.getElementById(id).value = '');
     render();
-  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
+  } catch (err) { resetBtn(); console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 function renderHealth() {
   const r = state.health[0] || {};
@@ -601,7 +616,11 @@ function renderHealth() {
 
 // === SLEEP ===
 async function saveSleep() {
-  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  const btn = document.querySelector('#sleepModal .btn-primary');
+  const orig = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
+  if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
     const entry = {
       user_id: currentUser.id,
@@ -611,12 +630,12 @@ async function saveSleep() {
       wake_time: document.getElementById('s-wake').value || null,
       quality: parseInt(document.getElementById('s-quality').value) || null
     };
-    const { data, error } = await sb.from('sleep').insert(entry).select().single();
+    const { data, error } = await sbQuery(sb.from('sleep').insert(entry).select().single());
     if (error) throw error;
     state.sleep.unshift({ ...data, bed: data.bedtime, wake: data.wake_time });
-    closeModal('sleepModal');
+    closeModal('sleepModal'); resetBtn();
     render();
-  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
+  } catch (err) { resetBtn(); console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 function renderSleep() {
   const r = state.sleep[0] || {};
@@ -637,10 +656,14 @@ function renderSleep() {
 
 // === GOALS ===
 async function saveGoal() {
-  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  const btn = document.querySelector('#goalModal .btn-primary');
+  const orig = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
+  if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
     const title = document.getElementById('g-title').value;
-    if (!title) return;
+    if (!title) { resetBtn(); return; }
     const entry = {
       user_id: currentUser.id,
       title,
@@ -651,13 +674,13 @@ async function saveGoal() {
       deadline: document.getElementById('g-deadline').value || null,
       done: false
     };
-    const { data, error } = await sb.from('goals').insert(entry).select().single();
+    const { data, error } = await sbQuery(sb.from('goals').insert(entry).select().single());
     if (error) throw error;
     state.goals.push({ ...data, cat: data.category });
-    closeModal('goalModal');
+    closeModal('goalModal'); resetBtn();
     ['g-title','g-target','g-current','g-unit','g-deadline'].forEach(id => document.getElementById(id).value = '');
     render();
-  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
+  } catch (err) { resetBtn(); console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 function updateGoal(id, val) {
   const g = state.goals.find(g => g.id === id);
@@ -685,10 +708,14 @@ function renderGoals() {
 
 // === TODOS ===
 async function saveTodo() {
-  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  const btn = document.querySelector('#todoModal .btn-primary');
+  const orig = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
+  if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
     const text = document.getElementById('t-text').value;
-    if (!text) return;
+    if (!text) { resetBtn(); return; }
     const entry = {
       user_id: currentUser.id,
       text,
@@ -697,13 +724,13 @@ async function saveTodo() {
       project: document.getElementById('t-project').value,
       done: false
     };
-    const { data, error } = await sb.from('todos').insert(entry).select().single();
+    const { data, error } = await sbQuery(sb.from('todos').insert(entry).select().single());
     if (error) throw error;
     state.todos.push({ ...data, due: data.due_date });
-    closeModal('todoModal');
+    closeModal('todoModal'); resetBtn();
     ['t-text','t-due','t-project'].forEach(id => document.getElementById(id).value = '');
     render();
-  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
+  } catch (err) { resetBtn(); console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 async function toggleTodo(id) {
   const t = state.todos.find(t => t.id === id);
@@ -739,10 +766,14 @@ function renderTodos() {
 
 // === PROJECTS ===
 async function saveProject() {
-  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  const btn = document.querySelector('#projectModal .btn-primary');
+  const orig = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
+  if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
     const name = document.getElementById('p-name').value;
-    if (!name) return;
+    if (!name) { resetBtn(); return; }
     const entry = {
       user_id: currentUser.id,
       name,
@@ -753,13 +784,13 @@ async function saveProject() {
       end_date: document.getElementById('p-end').value || null,
       tags: document.getElementById('p-tags').value.split(',').map(t=>t.trim()).filter(Boolean)
     };
-    const { data, error } = await sb.from('projects').insert(entry).select().single();
+    const { data, error } = await sbQuery(sb.from('projects').insert(entry).select().single());
     if (error) throw error;
     state.projects.push({ ...data, desc: data.description, start: data.start_date, end: data.end_date, tags: data.tags || [] });
-    closeModal('projectModal');
+    closeModal('projectModal'); resetBtn();
     ['p-name','p-desc','p-prog','p-start','p-end','p-tags'].forEach(id => document.getElementById(id).value = '');
     render();
-  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
+  } catch (err) { resetBtn(); console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 async function deleteProject(id) {
   state.projects = state.projects.filter(p => p.id !== id);
@@ -785,7 +816,11 @@ function renderProjects() {
 
 // === NOTES ===
 async function saveNote() {
-  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  const btn = document.querySelector('#noteModal .btn-primary');
+  const orig = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
+  if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
     const entry = {
       user_id: currentUser.id,
@@ -793,15 +828,15 @@ async function saveNote() {
       body: document.getElementById('n-body').value,
       color: selectedNoteColor
     };
-    const { data, error } = await sb.from('notes').insert(entry).select().single();
+    const { data, error } = await sbQuery(sb.from('notes').insert(entry).select().single());
     if (error) throw error;
     data.created = new Date(data.created_at).toLocaleDateString();
     state.notes.unshift(data);
-    closeModal('noteModal');
+    closeModal('noteModal'); resetBtn();
     document.getElementById('n-title').value = '';
     document.getElementById('n-body').value = '';
     render();
-  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
+  } catch (err) { resetBtn(); console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 async function deleteNote(id) {
   state.notes = state.notes.filter(n => n.id !== id);
