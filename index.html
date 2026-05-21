@@ -563,22 +563,24 @@ function pickColor(el, c) {
 
 // === HEALTH ===
 async function saveHealth() {
-  if (!currentUser) return;
-  const entry = {
-    user_id: currentUser.id,
-    date: new Date().toISOString().split('T')[0],
-    steps: parseInt(document.getElementById('h-steps').value) || 0,
-    water: parseInt(document.getElementById('h-water').value) || 0,
-    weight: parseFloat(document.getElementById('h-weight').value) || null,
-    mood: parseInt(document.getElementById('h-mood').value) || null,
-    notes: document.getElementById('h-notes').value
-  };
-  const { data, error } = await sb.from('health').insert(entry).select().single();
-  if (error) { console.error(error); showError(error.message); return; }
-  state.health.unshift(data);
-  closeModal('healthModal');
-  ['h-steps','h-water','h-weight','h-mood','h-notes'].forEach(id => document.getElementById(id).value = '');
-  render();
+  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  try {
+    const entry = {
+      user_id: currentUser.id,
+      date: new Date().toISOString().split('T')[0],
+      steps: parseInt(document.getElementById('h-steps').value) || 0,
+      water: parseInt(document.getElementById('h-water').value) || 0,
+      weight: parseFloat(document.getElementById('h-weight').value) || null,
+      mood: parseInt(document.getElementById('h-mood').value) || null,
+      notes: document.getElementById('h-notes').value
+    };
+    const { data, error } = await sb.from('health').insert(entry).select().single();
+    if (error) throw error;
+    state.health.unshift(data);
+    closeModal('healthModal');
+    ['h-steps','h-water','h-weight','h-mood','h-notes'].forEach(id => document.getElementById(id).value = '');
+    render();
+  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 function renderHealth() {
   const r = state.health[0] || {};
@@ -599,20 +601,22 @@ function renderHealth() {
 
 // === SLEEP ===
 async function saveSleep() {
-  if (!currentUser) return;
-  const entry = {
-    user_id: currentUser.id,
-    date: document.getElementById('s-date').value || new Date().toISOString().split('T')[0],
-    hours: parseFloat(document.getElementById('s-hours').value) || null,
-    bedtime: document.getElementById('s-bed').value || null,
-    wake_time: document.getElementById('s-wake').value || null,
-    quality: parseInt(document.getElementById('s-quality').value) || null
-  };
-  const { data, error } = await sb.from('sleep').insert(entry).select().single();
-  if (error) { console.error(error); showError(error.message); return; }
-  state.sleep.unshift({ ...data, bed: data.bedtime, wake: data.wake_time });
-  closeModal('sleepModal');
-  render();
+  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  try {
+    const entry = {
+      user_id: currentUser.id,
+      date: document.getElementById('s-date').value || new Date().toISOString().split('T')[0],
+      hours: parseFloat(document.getElementById('s-hours').value) || null,
+      bedtime: document.getElementById('s-bed').value || null,
+      wake_time: document.getElementById('s-wake').value || null,
+      quality: parseInt(document.getElementById('s-quality').value) || null
+    };
+    const { data, error } = await sb.from('sleep').insert(entry).select().single();
+    if (error) throw error;
+    state.sleep.unshift({ ...data, bed: data.bedtime, wake: data.wake_time });
+    closeModal('sleepModal');
+    render();
+  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 function renderSleep() {
   const r = state.sleep[0] || {};
@@ -633,25 +637,27 @@ function renderSleep() {
 
 // === GOALS ===
 async function saveGoal() {
-  if (!currentUser) return;
-  const title = document.getElementById('g-title').value;
-  if (!title) return;
-  const entry = {
-    user_id: currentUser.id,
-    title,
-    category: document.getElementById('g-cat').value,
-    target: parseFloat(document.getElementById('g-target').value) || 100,
-    current: parseFloat(document.getElementById('g-current').value) || 0,
-    unit: document.getElementById('g-unit').value,
-    deadline: document.getElementById('g-deadline').value || null,
-    done: false
-  };
-  const { data, error } = await sb.from('goals').insert(entry).select().single();
-  if (error) { console.error(error); showError(error.message); return; }
-  state.goals.push({ ...data, cat: data.category });
-  closeModal('goalModal');
-  ['g-title','g-target','g-current','g-unit','g-deadline'].forEach(id => document.getElementById(id).value = '');
-  render();
+  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  try {
+    const title = document.getElementById('g-title').value;
+    if (!title) return;
+    const entry = {
+      user_id: currentUser.id,
+      title,
+      category: document.getElementById('g-cat').value,
+      target: parseFloat(document.getElementById('g-target').value) || 100,
+      current: parseFloat(document.getElementById('g-current').value) || 0,
+      unit: document.getElementById('g-unit').value,
+      deadline: document.getElementById('g-deadline').value || null,
+      done: false
+    };
+    const { data, error } = await sb.from('goals').insert(entry).select().single();
+    if (error) throw error;
+    state.goals.push({ ...data, cat: data.category });
+    closeModal('goalModal');
+    ['g-title','g-target','g-current','g-unit','g-deadline'].forEach(id => document.getElementById(id).value = '');
+    render();
+  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 function updateGoal(id, val) {
   const g = state.goals.find(g => g.id === id);
@@ -679,23 +685,25 @@ function renderGoals() {
 
 // === TODOS ===
 async function saveTodo() {
-  if (!currentUser) return;
-  const text = document.getElementById('t-text').value;
-  if (!text) return;
-  const entry = {
-    user_id: currentUser.id,
-    text,
-    priority: document.getElementById('t-priority').value,
-    due_date: document.getElementById('t-due').value || null,
-    project: document.getElementById('t-project').value,
-    done: false
-  };
-  const { data, error } = await sb.from('todos').insert(entry).select().single();
-  if (error) { console.error(error); showError(error.message); return; }
-  state.todos.push({ ...data, due: data.due_date });
-  closeModal('todoModal');
-  ['t-text','t-due','t-project'].forEach(id => document.getElementById(id).value = '');
-  render();
+  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  try {
+    const text = document.getElementById('t-text').value;
+    if (!text) return;
+    const entry = {
+      user_id: currentUser.id,
+      text,
+      priority: document.getElementById('t-priority').value,
+      due_date: document.getElementById('t-due').value || null,
+      project: document.getElementById('t-project').value,
+      done: false
+    };
+    const { data, error } = await sb.from('todos').insert(entry).select().single();
+    if (error) throw error;
+    state.todos.push({ ...data, due: data.due_date });
+    closeModal('todoModal');
+    ['t-text','t-due','t-project'].forEach(id => document.getElementById(id).value = '');
+    render();
+  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 async function toggleTodo(id) {
   const t = state.todos.find(t => t.id === id);
@@ -731,25 +739,27 @@ function renderTodos() {
 
 // === PROJECTS ===
 async function saveProject() {
-  if (!currentUser) return;
-  const name = document.getElementById('p-name').value;
-  if (!name) return;
-  const entry = {
-    user_id: currentUser.id,
-    name,
-    description: document.getElementById('p-desc').value,
-    status: document.getElementById('p-status').value,
-    progress: parseInt(document.getElementById('p-prog').value) || 0,
-    start_date: document.getElementById('p-start').value || null,
-    end_date: document.getElementById('p-end').value || null,
-    tags: document.getElementById('p-tags').value.split(',').map(t=>t.trim()).filter(Boolean)
-  };
-  const { data, error } = await sb.from('projects').insert(entry).select().single();
-  if (error) { console.error(error); showError(error.message); return; }
-  state.projects.push({ ...data, desc: data.description, start: data.start_date, end: data.end_date, tags: data.tags || [] });
-  closeModal('projectModal');
-  ['p-name','p-desc','p-prog','p-start','p-end','p-tags'].forEach(id => document.getElementById(id).value = '');
-  render();
+  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  try {
+    const name = document.getElementById('p-name').value;
+    if (!name) return;
+    const entry = {
+      user_id: currentUser.id,
+      name,
+      description: document.getElementById('p-desc').value,
+      status: document.getElementById('p-status').value,
+      progress: parseInt(document.getElementById('p-prog').value) || 0,
+      start_date: document.getElementById('p-start').value || null,
+      end_date: document.getElementById('p-end').value || null,
+      tags: document.getElementById('p-tags').value.split(',').map(t=>t.trim()).filter(Boolean)
+    };
+    const { data, error } = await sb.from('projects').insert(entry).select().single();
+    if (error) throw error;
+    state.projects.push({ ...data, desc: data.description, start: data.start_date, end: data.end_date, tags: data.tags || [] });
+    closeModal('projectModal');
+    ['p-name','p-desc','p-prog','p-start','p-end','p-tags'].forEach(id => document.getElementById(id).value = '');
+    render();
+  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 async function deleteProject(id) {
   state.projects = state.projects.filter(p => p.id !== id);
@@ -775,21 +785,23 @@ function renderProjects() {
 
 // === NOTES ===
 async function saveNote() {
-  if (!currentUser) return;
-  const entry = {
-    user_id: currentUser.id,
-    title: document.getElementById('n-title').value || 'Note',
-    body: document.getElementById('n-body').value,
-    color: selectedNoteColor
-  };
-  const { data, error } = await sb.from('notes').insert(entry).select().single();
-  if (error) { console.error(error); showError(error.message); return; }
-  data.created = new Date(data.created_at).toLocaleDateString();
-  state.notes.unshift(data);
-  closeModal('noteModal');
-  document.getElementById('n-title').value = '';
-  document.getElementById('n-body').value = '';
-  render();
+  if (!currentUser) { showError('Not signed in — please refresh and log in again.'); return; }
+  try {
+    const entry = {
+      user_id: currentUser.id,
+      title: document.getElementById('n-title').value || 'Note',
+      body: document.getElementById('n-body').value,
+      color: selectedNoteColor
+    };
+    const { data, error } = await sb.from('notes').insert(entry).select().single();
+    if (error) throw error;
+    data.created = new Date(data.created_at).toLocaleDateString();
+    state.notes.unshift(data);
+    closeModal('noteModal');
+    document.getElementById('n-title').value = '';
+    document.getElementById('n-body').value = '';
+    render();
+  } catch (err) { console.error(err); showError(err.message || JSON.stringify(err)); }
 }
 async function deleteNote(id) {
   state.notes = state.notes.filter(n => n.id !== id);
