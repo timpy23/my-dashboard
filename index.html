@@ -250,6 +250,17 @@
   .cal-timed-event:hover { filter: brightness(1.2); box-shadow: 0 3px 14px rgba(0,0,0,0.45); z-index: 4; }
   .cal-te-time  { font-size: 9px; color: rgba(255,255,255,0.82); white-space: nowrap; overflow: hidden; line-height: 1.35; margin-bottom: 1px; }
   .cal-te-title { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.96); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+  /* ── Drag-to-create ──────────────────────────────────────────────────── */
+  .cal-drag-preview { position: absolute; left: 2px; right: 2px; border-radius: 4px; opacity: 0.7; z-index: 10; pointer-events: none; font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.92); padding: 4px 6px; overflow: hidden; box-sizing: border-box; border: 2px dashed rgba(255,255,255,0.4); }
+  .cal-quick-create { position: fixed; z-index: 500; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r); padding: 16px; width: 224px; box-shadow: 0 12px 48px rgba(0,0,0,0.65), 0 2px 8px rgba(0,0,0,0.3); }
+  .cal-qc-time { font-size: 11px; font-weight: 700; color: var(--accent2); margin-bottom: 12px; font-family: var(--font-h); letter-spacing: -0.2px; }
+  .cal-qc-input { margin-bottom: 8px; font-size: 13px; }
+  .cal-qc-select { margin-bottom: 10px; font-size: 12px; }
+  .cal-qc-colors { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 14px; }
+  .cal-qc-swatch { width: 19px; height: 19px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform var(--dur-xs), border-color var(--dur-xs); flex-shrink: 0; }
+  .cal-qc-swatch:hover { transform: scale(1.2); }
+  .cal-qc-swatch.sel { border-color: #fff; transform: scale(1.18); }
+  .cal-qc-footer { display: flex; justify-content: flex-end; gap: 6px; }
   /* ── Overview today's events ─────────────────────────────────────────── */
   .ov-event-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: opacity var(--dur-xs); }
   .ov-event-item:last-child { border-bottom: none; }
@@ -1384,17 +1395,226 @@ function renderCalMonth() {
 
 // px per hour in the week time-grid (1 min = WEEK_HOUR_PX/60 px)
 const WEEK_HOUR_PX = 64;
+const DRAG_HOLD_MS = 260;   // ms hold before drag activates
+const DRAG_MIN_MINS = 15;   // shortest drag that creates an event
 
-// Click an empty slot in the week grid → open modal pre-filled with that time
-function handleDayColClick(e, dateStr) {
-  if (e.target.closest('.cal-timed-event')) return; // let event clicks bubble to their own handler
-  const rect      = e.currentTarget.getBoundingClientRect();
-  const rawMins   = Math.round((e.clientY - rect.top) / WEEK_HOUR_PX * 60 / 15) * 15;
-  const startMins = Math.min(23 * 60, rawMins);
-  const endMins   = Math.min(23 * 60 + 30, startMins + 60);
-  openCalModal(null, dateStr);
-  document.getElementById('cal-start').value = `${pad2(Math.floor(startMins/60))}:${pad2(startMins%60)}`;
-  document.getElementById('cal-end').value   = `${pad2(Math.floor(endMins/60))}:${pad2(endMins%60)}`;
+// ── Drag-to-create state ──────────────────────────────────────────────
+let _drag = null;         // active drag session
+let _quickCreate = null;  // active quick-create popup session
+
+function _minsToY(m) { return (m / 60) * WEEK_HOUR_PX; }
+
+function _colRelY(e, colEl) {
+  // Y coordinate inside the day column (accounts for scroll)
+  return e.clientY - colEl.getBoundingClientRect().top;
+}
+
+function _snapMins(rawY) {
+  return Math.round(rawY / WEEK_HOUR_PX * 60 / 15) * 15;
+}
+
+// ── mousedown on a day column ─────────────────────────────────────────
+function calDragStart(e, dateStr, colEl) {
+  if (e.button !== 0) return;
+  if (e.target.closest('.cal-timed-event')) return;
+  e.preventDefault(); // suppress text-select cursor
+
+  const startMins = Math.max(0, Math.min(23 * 60, _snapMins(_colRelY(e, colEl))));
+
+  _drag = {
+    dateStr, colEl, startMins,
+    endMins: startMins,
+    active:  false,
+    color:   CAL_COLORS[0],
+    previewEl: null,
+    holdTimer: setTimeout(() => {
+      if (!_drag) return;
+      _drag.active = true;
+      document.body.style.userSelect = 'none';
+
+      const prev = document.createElement('div');
+      prev.className = 'cal-drag-preview';
+      prev.style.background = _drag.color;
+      colEl.appendChild(prev);
+      _drag.previewEl = prev;
+      _dragUpdatePreview();
+    }, DRAG_HOLD_MS)
+  };
+
+  document.addEventListener('mousemove', _dragMove);
+  document.addEventListener('mouseup',   _dragEnd);
+}
+
+function _dragUpdatePreview() {
+  if (!_drag?.previewEl) return;
+  const s = Math.min(_drag.startMins, _drag.endMins);
+  const e_ = Math.max(_drag.startMins, _drag.endMins);
+  _drag.previewEl.style.top    = _minsToY(s) + 'px';
+  _drag.previewEl.style.height = Math.max(20, _minsToY(e_ - s)) + 'px';
+  _drag.previewEl.textContent  =
+    `${pad2(Math.floor(s/60))}:${pad2(s%60)} – ${pad2(Math.floor(e_/60))}:${pad2(e_%60)}`;
+}
+
+function _dragMove(e) {
+  if (!_drag?.active) return;
+  const rawMins = _snapMins(_colRelY(e, _drag.colEl));
+  _drag.endMins = Math.max(0, Math.min(24 * 60, rawMins));
+  _dragUpdatePreview();
+
+  // Auto-scroll the scroll container when near edges
+  const scroll = _drag.colEl.closest('.cal-wv-scroll');
+  if (scroll) {
+    const sr = scroll.getBoundingClientRect();
+    if (e.clientY > sr.bottom - 52) scroll.scrollTop += 7;
+    if (e.clientY < sr.top    + 52) scroll.scrollTop -= 7;
+  }
+}
+
+function _dragEnd(e) {
+  document.removeEventListener('mousemove', _dragMove);
+  document.removeEventListener('mouseup',   _dragEnd);
+  document.body.style.userSelect = '';
+
+  if (!_drag) return;
+  clearTimeout(_drag.holdTimer);
+
+  if (!_drag.active) {
+    // Short tap → open the full modal pre-filled with clicked time
+    const { dateStr, startMins } = _drag;
+    const endMins = Math.min(23 * 60 + 30, startMins + 60);
+    _drag = null;
+    openCalModal(null, dateStr);
+    const ci = document.getElementById('cal-start');
+    const ce = document.getElementById('cal-end');
+    if (ci) ci.value = `${pad2(Math.floor(startMins/60))}:${pad2(startMins%60)}`;
+    if (ce) ce.value = `${pad2(Math.floor(endMins/60))}:${pad2(endMins%60)}`;
+    return;
+  }
+
+  const start = Math.min(_drag.startMins, _drag.endMins);
+  const end   = Math.max(_drag.startMins, _drag.endMins);
+
+  if (end - start < DRAG_MIN_MINS) {
+    _drag.previewEl?.remove();
+    _drag = null;
+    return; // too short — silently cancel
+  }
+
+  const d = _drag;
+  _drag = null;
+  _showQuickCreate(d.dateStr, start, end, d.colEl, d.previewEl, e.clientX, e.clientY);
+}
+
+// ── Quick-create popup ────────────────────────────────────────────────
+function _showQuickCreate(dateStr, startMins, endMins, colEl, previewEl, mx, my) {
+  _dismissQuickCreate();
+  _quickCreate = { dateStr, startMins, endMins, previewEl, color: CAL_COLORS[0] };
+
+  if (previewEl) {
+    previewEl.style.background = CAL_COLORS[0];
+    previewEl.style.border     = '2px solid rgba(255,255,255,0.5)';
+  }
+
+  const timeStr = `${pad2(Math.floor(startMins/60))}:${pad2(startMins%60)} – ${pad2(Math.floor(endMins/60))}:${pad2(endMins%60)}`;
+
+  const pop = document.createElement('div');
+  pop.id = 'calQcPopup';
+  pop.className = 'cal-quick-create';
+  pop.innerHTML = `
+    <div class="cal-qc-time"><i class="ti ti-clock" style="font-size:11px;margin-right:4px"></i>${timeStr}</div>
+    <input class="cal-qc-input" id="calQcTitle" placeholder="Event name…" autocomplete="off">
+    <select class="cal-qc-select" id="calQcCat">
+      <option value="Work">Work</option>
+      <option value="Gym">Gym</option>
+      <option value="Free Time">Free Time</option>
+      <option value="Other" selected>Other</option>
+    </select>
+    <div class="cal-qc-colors">${CAL_COLORS.map((c,i) =>
+      `<div class="cal-qc-swatch${i===0?' sel':''}" style="background:${c}" onclick="calQcColor(this,'${c}')"></div>`
+    ).join('')}</div>
+    <div class="cal-qc-footer">
+      <button class="btn btn-ghost" style="font-size:12px;padding:5px 8px" onclick="_dismissQuickCreate()">Cancel</button>
+      <button class="btn btn-primary" style="font-size:12px;padding:5px 14px" onclick="saveQuickCreate()">Save</button>
+    </div>`;
+
+  document.body.appendChild(pop);
+
+  // Position: prefer right of mouse, flip left if near viewport edge
+  const pw = 224, ph = 230;
+  let left = mx + 14;
+  let top  = my - 70;
+  if (left + pw > window.innerWidth  - 10) left = mx - pw - 14;
+  if (top  + ph > window.innerHeight - 10) top  = window.innerHeight - ph - 10;
+  if (top < 8) top = 8;
+  pop.style.cssText += `left:${left}px;top:${top}px`;
+
+  if (!prefersReducedMotion()) {
+    pop.animate(
+      [{ opacity: 0, transform: 'scale(0.88) translateY(8px)' },
+       { opacity: 1, transform: 'scale(1)    translateY(0)'   }],
+      { duration: 200, easing: 'cubic-bezier(0.22,1,0.36,1)', fill: 'forwards' }
+    );
+  }
+
+  setTimeout(() => {
+    document.getElementById('calQcTitle')?.focus();
+    document.addEventListener('mousedown', _qcOutside);
+  }, 80);
+}
+
+function _qcOutside(e) {
+  if (!document.getElementById('calQcPopup')?.contains(e.target)) _dismissQuickCreate();
+}
+
+function calQcColor(el, color) {
+  if (!_quickCreate) return;
+  _quickCreate.color = color;
+  document.querySelectorAll('.cal-qc-swatch').forEach(s => s.classList.remove('sel'));
+  el.classList.add('sel');
+  if (_quickCreate.previewEl) _quickCreate.previewEl.style.background = color;
+}
+
+function _dismissQuickCreate() {
+  document.removeEventListener('mousedown', _qcOutside);
+  document.getElementById('calQcPopup')?.remove();
+  _quickCreate?.previewEl?.remove();
+  _quickCreate = null;
+}
+
+async function saveQuickCreate() {
+  if (!_quickCreate || !currentUser) return;
+  const title = document.getElementById('calQcTitle')?.value.trim();
+  if (!title) { document.getElementById('calQcTitle')?.focus(); return; }
+
+  const btn = document.querySelector('#calQcPopup .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader spin"></i>'; }
+
+  try {
+    const { dateStr, startMins, endMins, color } = _quickCreate;
+    const entry = {
+      user_id:    currentUser.id,
+      title,
+      date:       dateStr,
+      start_time: `${pad2(Math.floor(startMins/60))}:${pad2(startMins%60)}`,
+      end_time:   `${pad2(Math.floor(endMins/60))}:${pad2(endMins%60)}`,
+      color,
+      category:   document.getElementById('calQcCat')?.value || 'Other',
+      repeat:     'none',
+      notes:      ''
+    };
+    const { data, error } = await sb.from('events').insert(entry).select().single();
+    if (error) throw error;
+    state.events.push(data);
+
+    document.removeEventListener('mousedown', _qcOutside);
+    document.getElementById('calQcPopup')?.remove();
+    _quickCreate.previewEl?.remove();
+    _quickCreate = null;
+    renderCalendar();
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    showError(err.message || 'Save failed');
+  }
 }
 
 function renderCalWeek() {
@@ -1519,7 +1739,7 @@ function renderCalWeek() {
 
     return `<div class="cal-wv-day-col${day.isToday ? ' today' : ''}"
                  style="height:${24 * HP}px"
-                 onclick="handleDayColClick(event,'${day.dateStr}')">
+                 onmousedown="calDragStart(event,'${day.dateStr}',this)">
       ${hourLines}${nowLine}${evHtml}
     </div>`;
   }).join('');
@@ -1872,8 +2092,11 @@ if ('serviceWorker' in navigator) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m => { if (m.style.display !== 'none') closeModal(m.id); });
-  if (e.key==='Enter' && e.target.tagName!=='TEXTAREA') {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay').forEach(m => { if (m.style.display !== 'none') closeModal(m.id); });
+    if (document.getElementById('calQcPopup')) _dismissQuickCreate();
+  }
+  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
     if      (document.getElementById('healthModal').style.display  !== 'none') saveHealth();
     else if (document.getElementById('sleepModal').style.display   !== 'none') saveSleep();
     else if (document.getElementById('goalModal').style.display    !== 'none') saveGoal();
@@ -1881,6 +2104,7 @@ document.addEventListener('keydown', e => {
     else if (document.getElementById('projectModal').style.display !== 'none') saveProject();
     else if (document.getElementById('noteModal').style.display    !== 'none') saveNote();
     else if (document.getElementById('calModal').style.display     !== 'none') saveCalEvent();
+    else if (document.getElementById('calQcPopup'))                            saveQuickCreate();
   }
 });
 </script>
