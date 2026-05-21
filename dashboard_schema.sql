@@ -177,7 +177,7 @@ create table if not exists events (
   end_time    time,
   color       text default '#7c6af7',
   category    text default 'Other'
-                check (category in ('Gym', 'Work', 'Free Time', 'Other')),
+                check (category in ('Gym', 'Work', 'Free Time', 'Other', 'Sleep')),
   repeat      text default 'none'
                 check (repeat in ('none', 'daily', 'weekly', 'monthly')),
   notes       text default '',
@@ -194,6 +194,51 @@ create policy "Users can manage their own events"
 
 create index if not exists events_user_date on events(user_id, date);
 
+
+-- ============================================================
+-- GAMES  (Roblox universe IDs managed per-user)
+-- ============================================================
+create table if not exists games (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references auth.users(id) on delete cascade,
+  universe_id bigint not null,
+  created_at  timestamptz default now()
+);
+
+alter table games enable row level security;
+
+drop policy if exists "Users can manage their own games" on games;
+create policy "Users can manage their own games"
+  on games for all
+  using  (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create index if not exists games_user_id on games(user_id);
+
+-- ============================================================
+-- SETTINGS
+-- ============================================================
+create table if not exists settings (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references auth.users(id) on delete cascade unique,
+  features    jsonb default '{}',
+  profile     jsonb default '{}',
+  appearance  jsonb default '{}',
+  created_at  timestamptz default now()
+);
+
+alter table settings enable row level security;
+
+drop policy if exists "Users can manage their own settings" on settings;
+create policy "Users can manage their own settings"
+  on settings for all
+  using  (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- NOTE: If events table already exists, run this migration to add Sleep:
+-- alter table events drop constraint if exists events_category_check;
+-- alter table events add constraint events_category_check
+--   check (category in ('Gym','Work','Free Time','Other','Sleep'));
 
 -- ============================================================
 -- AUTO-UPDATE updated_at ON CHANGES

@@ -267,6 +267,34 @@
   .ov-event-item:hover { opacity: 0.75; }
   .ov-event-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
+  /* ── Settings & toggles ──────────────────────────────────────────────── */
+  .settings-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; margin-top: -8px; }
+  .toggle-wrap { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .toggle-wrap:last-child { border-bottom: none; }
+  .toggle-label { font-size: 13.5px; font-weight: 500; }
+  .toggle-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .toggle-switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--bg4); border-radius: 11px; transition: background var(--dur-md) var(--ease-out); cursor: pointer; }
+  .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: white; border-radius: 50%; transition: transform var(--dur-md) var(--ease-spring); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); }
+  .sidebar-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; font-family: var(--font-h); transition: background var(--dur-md); }
+  .sidebar-divider { height: 1px; background: var(--border); margin: 8px 12px; }
+  /* Compact mode */
+  body.compact-mode .main { padding: 16px 20px; }
+  body.compact-mode .card { padding: 14px 16px; }
+  body.compact-mode .stat-card { padding: 12px 14px; }
+  body.compact-mode .stat-val { font-size: 20px; }
+  body.compact-mode .page-header { margin-bottom: 14px; }
+  body.compact-mode .card-title { margin-bottom: 10px; }
+  /* Force reduced motion via settings toggle */
+  body.force-reduced-motion *, body.force-reduced-motion *::before, body.force-reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
   /* ── Skeleton loading ──────────────────────────────────────────────── */
   .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; border-radius: var(--r2); }
   .skeleton-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
@@ -322,27 +350,34 @@
     <div class="logo"><span>✦</span> Dash</div>
     <div class="nav-section">
       <div class="nav-label">Overview</div>
-      <div class="nav-item active" onclick="nav('overview')"><i class="ti ti-layout-dashboard"></i><span>Overview</span></div>
+      <div class="nav-item active" id="nav-overview" onclick="nav('overview')"><i class="ti ti-layout-dashboard"></i><span>Overview</span></div>
     </div>
     <div class="nav-section">
       <div class="nav-label">Wellness</div>
-      <div class="nav-item" onclick="nav('health')"><i class="ti ti-heart"></i><span>Health</span></div>
-      <div class="nav-item" onclick="nav('sleep')"><i class="ti ti-moon"></i><span>Sleep</span></div>
+      <div class="nav-item" id="nav-health" onclick="nav('health')"><i class="ti ti-heart"></i><span>Health</span></div>
+      <div class="nav-item" id="nav-sleep" onclick="nav('sleep')"><i class="ti ti-moon"></i><span>Sleep</span></div>
     </div>
     <div class="nav-section">
       <div class="nav-label">Work</div>
-      <div class="nav-item" onclick="nav('goals')"><i class="ti ti-target"></i><span>Goals</span></div>
-      <div class="nav-item" onclick="nav('todos')"><i class="ti ti-checkbox"></i><span>To-Do</span></div>
-      <div class="nav-item" onclick="nav('projects')"><i class="ti ti-briefcase"></i><span>Projects</span></div>
+      <div class="nav-item" id="nav-goals" onclick="nav('goals')"><i class="ti ti-target"></i><span>Goals</span></div>
+      <div class="nav-item" id="nav-todos" onclick="nav('todos')"><i class="ti ti-checkbox"></i><span>To-Do</span></div>
+      <div class="nav-item" id="nav-projects" onclick="nav('projects')"><i class="ti ti-briefcase"></i><span>Projects</span></div>
     </div>
     <div class="nav-section">
       <div class="nav-label">More</div>
-      <div class="nav-item" onclick="nav('notes')"><i class="ti ti-notes"></i><span>Notes</span></div>
-      <div class="nav-item" onclick="nav('games')"><i class="ti ti-device-gamepad-2"></i><span>My Games</span></div>
-      <div class="nav-item" onclick="nav('calendar')"><i class="ti ti-calendar"></i><span>Calendar</span></div>
+      <div class="nav-item" id="nav-notes" onclick="nav('notes')"><i class="ti ti-notes"></i><span>Notes</span></div>
+      <div class="nav-item" id="nav-games" onclick="nav('games')"><i class="ti ti-device-gamepad-2"></i><span>My Games</span></div>
+      <div class="nav-item" id="nav-calendar" onclick="nav('calendar')"><i class="ti ti-calendar"></i><span>Calendar</span></div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="nav-section">
+      <div class="nav-item" id="nav-settings" onclick="nav('settings')"><i class="ti ti-settings"></i><span>Settings</span></div>
     </div>
     <div class="sidebar-footer">
-      <div class="date-chip" id="dateChip"></div>
+      <div style="display:flex;align-items:center;gap:8px;padding:2px 0 6px">
+        <div id="sidebar-avatar" class="sidebar-avatar"></div>
+        <div class="date-chip" id="dateChip" style="flex:1"></div>
+      </div>
       <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="signOut()">
         <i class="ti ti-logout" style="font-size:15px"></i><span>Sign out</span>
       </button>
@@ -448,9 +483,10 @@
         <div style="display:flex;align-items:center;gap:10px">
           <span id="games-last-updated" style="font-size:12px;color:var(--muted)"></span>
           <button class="btn" onclick="fetchGames()"><i class="ti ti-refresh"></i> Refresh</button>
+          <button class="btn btn-primary" onclick="openModal('addGameModal')"><i class="ti ti-plus"></i> Add Game</button>
         </div>
       </div>
-      <div class="grid-4" style="margin-bottom:20px" id="games-stats"></div>
+      <div class="grid-3" style="margin-bottom:20px" id="games-stats"></div>
       <div class="games-grid" id="games-grid">
         <div class="empty-state" style="grid-column:1/-1"><i class="ti ti-loader spin"></i><div>Loading game data…</div></div>
       </div>
@@ -478,6 +514,93 @@
       <div class="card" style="margin-top:20px">
         <div class="card-title" id="cal-analytics-title">This Month's Time</div>
         <div id="cal-analytics" style="display:flex;align-items:center;gap:36px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <div class="page-title">Settings</div>
+      </div>
+      <div class="grid-2" style="gap:16px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Features -->
+          <div class="card">
+            <div class="card-title">Features</div>
+            <div class="settings-sub">Show or hide pages from the sidebar</div>
+            <div class="toggle-wrap">
+              <div><div class="toggle-label">Health</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="st-health" onchange="updateFeature('health',this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-wrap">
+              <div><div class="toggle-label">Sleep</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="st-sleep" onchange="updateFeature('sleep',this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-wrap">
+              <div><div class="toggle-label">Goals</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="st-goals" onchange="updateFeature('goals',this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-wrap">
+              <div><div class="toggle-label">Calendar</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="st-calendar" onchange="updateFeature('calendar',this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-wrap">
+              <div><div class="toggle-label">Notes</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="st-notes" onchange="updateFeature('notes',this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-wrap">
+              <div><div class="toggle-label">Roblox Games</div></div>
+              <label class="toggle-switch"><input type="checkbox" id="st-games" onchange="updateFeature('games',this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+          <!-- Account -->
+          <div class="card">
+            <div class="card-title">Account</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
+              <div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Signed in as</div>
+                <div id="st-email" style="font-size:14px;font-weight:600"></div>
+              </div>
+              <button class="btn btn-danger" onclick="signOut()"><i class="ti ti-logout"></i> Sign Out</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Profile -->
+          <div class="card">
+            <div class="card-title">Profile</div>
+            <div class="form-row">
+              <label>Display name</label>
+              <input id="st-name" placeholder="Your name…" oninput="updateProfile('name',this.value)">
+            </div>
+            <div class="form-row">
+              <label>Avatar color</label>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+                <input id="st-avatar-color" type="color" style="width:48px;height:36px;padding:2px;border-radius:8px;cursor:pointer;background:var(--bg3);border:1px solid var(--border)" oninput="updateProfile('avatarColor',this.value)">
+                <div id="st-avatar-preview" class="sidebar-avatar" style="width:36px;height:36px;font-size:15px"></div>
+                <span style="font-size:12px;color:var(--muted)">Preview</span>
+              </div>
+            </div>
+          </div>
+          <!-- Appearance -->
+          <div class="card">
+            <div class="card-title">Appearance</div>
+            <div class="toggle-wrap">
+              <div>
+                <div class="toggle-label">Reduced motion</div>
+                <div class="toggle-desc">Disables all animations and transitions</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="st-reduced-motion" onchange="updateAppearance('reducedMotion',this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-wrap">
+              <div>
+                <div class="toggle-label">Compact mode</div>
+                <div class="toggle-desc">Tighter padding and spacing throughout</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="st-compact" onchange="updateAppearance('compactMode',this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -618,6 +741,21 @@
   </div>
 </div>
 
+<div id="addGameModal" class="modal-overlay" style="display:none" onclick="closeIfBg(event,'addGameModal')">
+  <div class="modal">
+    <div class="modal-title">Add Game</div>
+    <div class="form-row">
+      <label>Roblox Universe ID</label>
+      <input id="ag-uid" type="number" placeholder="e.g. 9937907976" onkeydown="if(event.key==='Enter')addGame()">
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:-6px;margin-bottom:16px;line-height:1.5">Find the Universe ID in your game's URL:<br><span style="color:var(--muted);opacity:0.7">roblox.com/games/<b style="color:var(--accent2)">ID</b>/game-name</span></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addGameModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addGame()">Add Game</button>
+    </div>
+  </div>
+</div>
+
 <div id="calModal" class="modal-overlay" style="display:none" onclick="closeIfBg(event,'calModal')">
   <div class="modal">
     <div class="modal-title" id="cal-modal-title">New Event</div>
@@ -630,6 +768,7 @@
           <option value="Gym">Gym</option>
           <option value="Free Time">Free Time</option>
           <option value="Other">Other</option>
+          <option value="Sleep">Sleep</option>
         </select>
       </div>
     </div>
@@ -666,7 +805,12 @@ const SUPABASE_ANON_KEY = 'sb_publishable_9Ws7JR6MQx_O6drgmqsbPw_8_BJMxnS';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // === STATE ===
-let state = { health: [], sleep: [], goals: [], todos: [], projects: [], notes: [], events: [] };
+let state = { health: [], sleep: [], goals: [], todos: [], projects: [], notes: [], events: [], games: [] };
+let userSettings = {
+  features:   { games: true, health: true, sleep: true, goals: true, calendar: true, notes: true },
+  profile:    { name: '', avatarColor: '#7c6af7' },
+  appearance: { reducedMotion: false, compactMode: false }
+};
 let todoFilter = 'all';
 let selectedNoteColor = '#1a1a1e';
 let currentUser = null;
@@ -704,14 +848,20 @@ async function signOut() {
   clearInterval(_gamesTimer);
   _gamesTimer = null;
   await sb.auth.signOut();
-  state = { health: [], sleep: [], goals: [], todos: [], projects: [], notes: [], events: [] };
+  state = { health: [], sleep: [], goals: [], todos: [], projects: [], notes: [], events: [], games: [] };
   gamesData = [];
+  userSettings = {
+    features: { games: true, health: true, sleep: true, goals: true, calendar: true, notes: true },
+    profile: { name: '', avatarColor: '#7c6af7' },
+    appearance: { reducedMotion: false, compactMode: false }
+  };
+  document.body.classList.remove('force-reduced-motion', 'compact-mode');
 }
 
 // === DATA LOADING ===
 async function loadFromSupabase() {
   const uid = currentUser.id;
-  const [h, s, g, t, p, n, ev] = await Promise.all([
+  const [h, s, g, t, p, n, ev, gm, st] = await Promise.all([
     sb.from('health').select('*').eq('user_id', uid).order('date', { ascending: false }),
     sb.from('sleep').select('*').eq('user_id', uid).order('date', { ascending: false }),
     sb.from('goals').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
@@ -719,6 +869,8 @@ async function loadFromSupabase() {
     sb.from('projects').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
     sb.from('notes').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
     sb.from('events').select('*').eq('user_id', uid).order('date', { ascending: true }),
+    sb.from('games').select('*').eq('user_id', uid).order('created_at', { ascending: true }),
+    sb.from('settings').select('*').eq('user_id', uid).maybeSingle(),
   ]);
   // Map DB column names to the field names the render functions expect
   state.health   = h.data || [];
@@ -728,6 +880,13 @@ async function loadFromSupabase() {
   state.projects = (p.data || []).map(r => ({ ...r, desc: r.description, start: r.start_date, end: r.end_date, tags: r.tags || [] }));
   state.notes    = (n.data || []).map(r => ({ ...r, created: new Date(r.created_at).toLocaleDateString() }));
   state.events   = ev.data || [];
+  state.games    = gm.data || [];
+  if (st.data) {
+    const d = st.data;
+    if (d.features)   userSettings.features   = { ...userSettings.features,   ...d.features };
+    if (d.profile)    userSettings.profile     = { ...userSettings.profile,    ...d.profile };
+    if (d.appearance) userSettings.appearance  = { ...userSettings.appearance, ...d.appearance };
+  }
 }
 
 // === ERROR TOAST ===
@@ -747,7 +906,7 @@ const _dbProj = _debounce((id, val) => sb.from('projects').update({ progress: pa
 
 // === ANIMATION HELPERS ===
 let _animateNext = false; // set true in nav() and initial load; cleared by render()
-const prefersReducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const prefersReducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches || !!userSettings.appearance.reducedMotion;
 
 // Stagger-fade children of a container into view
 function animateIn(container, stagger = 60) {
@@ -815,7 +974,8 @@ function setDate() {
   if (chip) chip.textContent = now.toLocaleDateString('en-GB', { weekday:'short', month:'short', day:'numeric' });
   const h = now.getHours();
   const greeting = document.getElementById('greeting');
-  if (greeting) greeting.textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + ' ✦';
+  const name = userSettings.profile.name?.trim();
+  if (greeting) greeting.textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + (name ? `, ${name}` : ' ✦');
 }
 
 function openModal(id) {
@@ -1153,14 +1313,22 @@ function renderNotes() {
 }
 
 // === MY GAMES ===
-const GAME_UNIVERSE_IDS = [9937907976, 8334477247, 9482790279, 9550364666];
 let gamesData = [];
 let _gamesTimer = null;
 
 let _gamesIsRefresh = false;
 async function fetchGames(isRefresh = false) {
   _gamesIsRefresh = isRefresh;
-  const ids = GAME_UNIVERSE_IDS.join(',');
+  if (state.games.length === 0) {
+    const statsEl = document.getElementById('games-stats');
+    const grid = document.getElementById('games-grid');
+    if (statsEl) statsEl.innerHTML = '';
+    if (grid) grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-device-gamepad-2"></i><div>No games added yet.<br>Click <b>Add Game</b> to start tracking a Roblox game.</div></div>';
+    gamesData = [];
+    updateOverviewCCU();
+    return;
+  }
+  const ids   = state.games.map(g => g.universe_id).join(',');
   const proxy = url => `https://corsproxy.io/?${url}`;
   try {
     const [gRes, tRes] = await Promise.all([
@@ -1170,16 +1338,14 @@ async function fetchGames(isRefresh = false) {
     const gJson  = await gRes.json();
     const tJson  = await tRes.json();
 
-    // Build a quick thumbnail lookup by universeId
     const thumbMap = {};
     for (const t of (tJson.data || [])) thumbMap[t.targetId] = t.imageUrl;
 
-    // Sort results in the same order as GAME_UNIVERSE_IDS
     const byId = {};
     for (const g of (gJson.data || [])) byId[g.id] = g;
-    gamesData = GAME_UNIVERSE_IDS
-      .filter(id => byId[id])
-      .map(id => ({ ...byId[id], thumbnail: thumbMap[id] || '' }));
+    gamesData = state.games
+      .filter(sg => byId[sg.universe_id])
+      .map(sg => ({ ...byId[sg.universe_id], thumbnail: thumbMap[sg.universe_id] || '', _supabaseId: sg.id }));
 
     const el = document.getElementById('games-last-updated');
     if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1194,19 +1360,12 @@ async function fetchGames(isRefresh = false) {
 function renderGames(flash = false) {
   const totalCCU   = gamesData.reduce((s, g) => s + (g.playing || 0), 0);
   const totalVisits = gamesData.reduce((s, g) => s + (g.visits  || 0), 0);
-  const avgRating  = gamesData.length
-    ? Math.round(gamesData.reduce((s, g) => {
-        const up = g.totalUpVotes || 0, down = g.totalDownVotes || 0;
-        return s + (up + down > 0 ? (up / (up + down)) * 100 : 0);
-      }, 0) / gamesData.length)
-    : 0;
 
   const statsEl = document.getElementById('games-stats');
   if (statsEl) statsEl.innerHTML = `
     <div class="stat-card"><div class="stat-label">Total Players Online</div><div class="stat-val stat-green">${totalCCU.toLocaleString()}</div><div class="stat-sub">Live CCU across all games</div></div>
     <div class="stat-card"><div class="stat-label">Games Tracked</div><div class="stat-val stat-accent">${gamesData.length}</div><div class="stat-sub">Universe IDs</div></div>
-    <div class="stat-card"><div class="stat-label">Total Visits</div><div class="stat-val stat-teal">${totalVisits >= 1e9 ? (totalVisits/1e9).toFixed(1)+'B' : totalVisits >= 1e6 ? (totalVisits/1e6).toFixed(1)+'M' : totalVisits.toLocaleString()}</div><div class="stat-sub">All time</div></div>
-    <div class="stat-card"><div class="stat-label">Avg Rating</div><div class="stat-val stat-amber">${gamesData.length ? avgRating + '%' : '—'}</div><div class="stat-sub">Thumbs-up ratio</div></div>`;
+    <div class="stat-card"><div class="stat-label">Total Visits</div><div class="stat-val stat-teal">${totalVisits >= 1e9 ? (totalVisits/1e9).toFixed(1)+'B' : totalVisits >= 1e6 ? (totalVisits/1e6).toFixed(1)+'M' : totalVisits.toLocaleString()}</div><div class="stat-sub">All time</div></div>`;
 
   const grid = document.getElementById('games-grid');
   if (!grid) return;
@@ -1217,22 +1376,19 @@ function renderGames(flash = false) {
   }
 
   grid.innerHTML = gamesData.map(g => {
-    const up = g.totalUpVotes || 0, down = g.totalDownVotes || 0;
-    const rating = up + down > 0 ? Math.round((up / (up + down)) * 100) : 0;
     const visits = g.visits >= 1e9 ? (g.visits/1e9).toFixed(1)+'B' : g.visits >= 1e6 ? (g.visits/1e6).toFixed(1)+'M' : (g.visits||0).toLocaleString();
-    return `<div class="game-card">
+    return `<div class="game-card" style="position:relative">
       <div class="game-thumb">
         ${g.thumbnail
           ? `<img src="${g.thumbnail}" alt="${g.name}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=game-thumb-placeholder><i class=\\"ti ti-device-gamepad-2\\"></i></div>'">`
           : '<div class="game-thumb-placeholder"><i class="ti ti-device-gamepad-2"></i></div>'}
       </div>
       <div class="game-info">
-        <div class="game-name" title="${g.name}">${g.name}</div>
+        <button class="btn" style="position:absolute;top:8px;right:8px;padding:3px 7px;opacity:0.7;z-index:2" onclick="removeGame('${g._supabaseId}')"><i class="ti ti-x" style="font-size:13px"></i></button>
+        <div class="game-name" title="${g.name}" style="padding-right:32px">${g.name}</div>
         <div class="game-ccu"><span class="ccu-dot"></span>${(g.playing||0).toLocaleString()}<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:2px">playing</span></div>
         <div class="game-meta">
           <span><i class="ti ti-eye"></i>${visits} visits</span>
-          <span><i class="ti ti-thumb-up"></i>${rating}%</span>
-          ${g.maxPlayers ? `<span><i class="ti ti-users"></i>Max ${g.maxPlayers}</span>` : ''}
         </div>
       </div>
     </div>`;
@@ -1254,6 +1410,33 @@ function renderGames(flash = false) {
   }
   // Keep overview CCU stat in sync whenever game data refreshes
   updateOverviewCCU();
+}
+
+async function addGame() {
+  const uid = parseInt(document.getElementById('ag-uid').value);
+  if (!uid || isNaN(uid)) return;
+  if (state.games.some(g => g.universe_id === uid || String(g.universe_id) === String(uid))) { showError('Game already added'); return; }
+  const btn = document.querySelector('#addGameModal .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Add Game'; } };
+  try {
+    const { data, error } = await sb.from('games').insert({ user_id: currentUser.id, universe_id: uid }).select().single();
+    if (error) throw error;
+    state.games.push(data);
+    closeModal('addGameModal');
+    document.getElementById('ag-uid').value = '';
+    resetBtn();
+    fetchGames();
+  } catch (err) { resetBtn(); showError(err.message); }
+}
+
+async function removeGame(supabaseId) {
+  const game = state.games.find(g => g.id === supabaseId);
+  if (!game) return;
+  state.games = state.games.filter(g => g.id !== supabaseId);
+  gamesData   = gamesData.filter(g => g._supabaseId !== supabaseId);
+  renderGames();
+  await sb.from('games').delete().eq('id', supabaseId);
 }
 
 // === CALENDAR ===
@@ -1285,7 +1468,7 @@ function renderGames(flash = false) {
 */
 
 const CAL_COLORS  = ['#7c6af7','#4ade80','#fbbf24','#f87171','#34d399','#f472b6','#60a5fa','#a78bfa','#fb923c','#e879f9'];
-const CAT_COLORS  = { Work:'#7c6af7', Gym:'#4ade80', 'Free Time':'#34d399', Other:'#fbbf24' };
+const CAT_COLORS  = { Work:'#7c6af7', Gym:'#4ade80', 'Free Time':'#34d399', Other:'#fbbf24', Sleep:'#60a5fa' };
 const CAL_MONTHS  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 let calYear     = new Date().getFullYear();
@@ -1779,7 +1962,7 @@ function renderCalAnalytics() {
   const titleEl = document.getElementById('cal-analytics-title');
   if (!el) return;
 
-  const catMins = { Work: 0, Gym: 0, 'Free Time': 0, Other: 0 };
+  const catMins = { Work: 0, Gym: 0, 'Free Time': 0, Other: 0, Sleep: 0 };
   let totalMinutes;
 
   if (calView === 'week') {
@@ -1828,6 +2011,7 @@ function renderCalAnalytics() {
     { label: 'Gym',       mins: catMins['Gym'],        color: CAT_COLORS['Gym']       },
     { label: 'Free Time', mins: catMins['Free Time'],  color: CAT_COLORS['Free Time'] },
     { label: 'Other',     mins: catMins['Other'],      color: CAT_COLORS['Other']     },
+    { label: 'Sleep',     mins: catMins['Sleep'],     color: CAT_COLORS['Sleep']     },
     { label: 'None',      mins: noneMins,              color: '#222228'               },
   ];
 
@@ -1969,6 +2153,86 @@ async function deleteCalEvent() {
   }
 }
 
+// === SETTINGS ===
+const _dbSettings = _debounce(async () => {
+  if (!currentUser) return;
+  await sb.from('settings').upsert({
+    user_id: currentUser.id,
+    features: userSettings.features,
+    profile: userSettings.profile,
+    appearance: userSettings.appearance
+  }, { onConflict: 'user_id' });
+}, 900);
+
+function applySettings() {
+  const { features, profile, appearance } = userSettings;
+
+  // Feature nav visibility
+  const featureKeys = ['games','health','sleep','goals','calendar','notes'];
+  for (const key of featureKeys) {
+    const el = document.getElementById('nav-' + key);
+    if (el) el.style.display = features[key] !== false ? '' : 'none';
+  }
+
+  // If the active page was just hidden, redirect to overview
+  const activeId = document.querySelector('.page.active')?.id?.replace('page-', '');
+  if (activeId && features[activeId] === false) nav('overview');
+
+  // Greeting
+  setDate();
+
+  // Sidebar avatar
+  const color = profile.avatarColor || '#7c6af7';
+  const letter = profile.name?.trim()[0]?.toUpperCase() || '';
+  ['sidebar-avatar','st-avatar-preview'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.background = color; el.textContent = letter; }
+  });
+
+  // Appearance classes
+  document.body.classList.toggle('force-reduced-motion', !!appearance.reducedMotion);
+  document.body.classList.toggle('compact-mode', !!appearance.compactMode);
+}
+
+function renderSettings() {
+  const { features, profile, appearance } = userSettings;
+  ['games','health','sleep','goals','calendar','notes'].forEach(k => {
+    const el = document.getElementById('st-' + k);
+    if (el) el.checked = features[k] !== false;
+  });
+  const nameEl = document.getElementById('st-name');
+  if (nameEl) nameEl.value = profile.name || '';
+  const colorEl = document.getElementById('st-avatar-color');
+  if (colorEl) colorEl.value = profile.avatarColor || '#7c6af7';
+  const rmEl = document.getElementById('st-reduced-motion');
+  if (rmEl) rmEl.checked = !!appearance.reducedMotion;
+  const cmEl = document.getElementById('st-compact');
+  if (cmEl) cmEl.checked = !!appearance.compactMode;
+  const emailEl = document.getElementById('st-email');
+  if (emailEl) emailEl.textContent = currentUser?.email || '';
+  // Update avatar preview
+  const color = profile.avatarColor || '#7c6af7';
+  const letter = profile.name?.trim()[0]?.toUpperCase() || '';
+  const prev = document.getElementById('st-avatar-preview');
+  if (prev) { prev.style.background = color; prev.textContent = letter; }
+}
+
+function updateFeature(key, val) {
+  userSettings.features[key] = val;
+  applySettings();
+  _dbSettings();
+}
+function updateProfile(key, val) {
+  userSettings.profile[key] = val;
+  applySettings();
+  _dbSettings();
+}
+function updateAppearance(key, val) {
+  userSettings.appearance[key] = val;
+  applySettings();
+  _dbSettings();
+}
+
 // === OVERVIEW ===
 function renderOverviewEvents() {
   const el = document.getElementById('ov-events');
@@ -2054,6 +2318,7 @@ function render() {
   if (id==='notes')     renderNotes();
   if (id==='games')    { if (gamesData.length === 0) fetchGames(); else renderGames(); }
   if (id==='calendar') renderCalendar();
+  if (id==='settings') renderSettings();
   _animateNext = false;
 }
 
@@ -2072,7 +2337,7 @@ sb.auth.onAuthStateChange((event, session) => {
     // every subsequent request to hang waiting for that same lock.
     setTimeout(() =>
       loadFromSupabase()
-        .then(() => { setDate(); _animateNext = true; render(); })
+        .then(() => { setDate(); applySettings(); _animateNext = true; render(); })
         .catch(err => showError('Failed to load data: ' + err.message))
     , 0);
     // Auto-refresh game CCU every 60 seconds
