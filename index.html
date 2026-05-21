@@ -4,9 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Personal Dashboard</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7c6af7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -42,7 +48,7 @@
   .nav-item:hover { background: var(--bg3); color: var(--text); }
   .nav-item.active { background: rgba(124,106,247,0.15); color: var(--accent2); }
   .nav-item i { font-size: 17px; }
-  .sidebar-footer { margin-top: auto; padding: 0 20px; }
+  .sidebar-footer { margin-top: auto; padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
   .date-chip { background: var(--bg3); border: 1px solid var(--border); border-radius: 100px; padding: 6px 12px; font-size: 12px; color: var(--muted); }
 
   .main { flex: 1; overflow-y: auto; padding: 28px 32px; }
@@ -52,8 +58,11 @@
   .page-title { font-family: var(--font-h); font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
   .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--r2); border: 1px solid var(--border2); background: var(--bg3); color: var(--text); font-family: var(--font-b); font-size: 13px; cursor: pointer; transition: all 0.15s; }
   .btn:hover { background: var(--bg4); border-color: rgba(255,255,255,0.2); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
   .btn-primary:hover { background: #6b59e8; border-color: #6b59e8; }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); font-size: 12px; padding: 6px 8px; }
+  .btn-ghost:hover { background: var(--bg3); color: var(--text); border-color: transparent; }
 
   .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; }
   .card-title { font-family: var(--font-h); font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; }
@@ -132,6 +141,20 @@
   .empty-state i { font-size: 36px; margin-bottom: 10px; display: block; opacity: 0.4; }
   .overview-hero { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
 
+  /* Login & loading screens */
+  #loading-screen, #login-screen {
+    position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 200;
+  }
+  .login-card {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 20px; padding: 40px; width: 380px; max-width: 95vw;
+  }
+  .login-logo { font-family: var(--font-h); font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  .login-sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; line-height: 1.5; }
+  .login-msg { margin-top: 14px; padding: 12px 14px; background: rgba(124,106,247,0.1); border: 1px solid rgba(124,106,247,0.25); border-radius: var(--r2); font-size: 13px; color: var(--accent2); line-height: 1.5; }
+  .login-msg.error { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.25); color: var(--red); }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   @media (max-width: 768px) {
     .sidebar { width: 56px; min-width: 56px; }
     .nav-item span, .nav-label, .sidebar-footer { display: none; }
@@ -143,7 +166,30 @@
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- LOADING SCREEN (shown until auth state is known) -->
+<div id="loading-screen">
+  <div style="font-family:var(--font-h);font-size:28px;color:var(--accent2);opacity:0.6">✦</div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:none">
+  <div class="login-card">
+    <div class="login-logo"><span style="color:var(--accent2)">✦</span> Dash</div>
+    <div class="login-sub">Sign in with a magic link to sync your data across all your devices.</div>
+    <div class="form-row">
+      <label>Email address</label>
+      <input id="login-email" type="email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')sendMagicLink()">
+    </div>
+    <button id="login-btn" class="btn btn-primary" style="width:100%;justify-content:center;padding:10px 14px" onclick="sendMagicLink()">
+      <i class="ti ti-send"></i> Send Magic Link
+    </button>
+    <div id="login-msg" style="display:none" class="login-msg"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="app" style="display:none">
   <aside class="sidebar">
     <div class="logo"><span>✦</span> Dash</div>
     <div class="nav-section">
@@ -167,6 +213,9 @@
     </div>
     <div class="sidebar-footer">
       <div class="date-chip" id="dateChip"></div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="signOut()">
+        <i class="ti ti-logout" style="font-size:15px"></i><span>Sign out</span>
+      </button>
     </div>
   </aside>
 
@@ -399,17 +448,77 @@
 </div>
 
 <script>
+// === SUPABASE ===
+const SUPABASE_URL = 'https://vqohubvmpffzxsazlxky.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_9Ws7JR6MQx_O6drgmqsbPw_8_BJMxnS';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// === STATE ===
 let state = { health: [], sleep: [], goals: [], todos: [], projects: [], notes: [] };
 let todoFilter = 'all';
 let selectedNoteColor = '#1a1a1e';
+let currentUser = null;
 
-function load() {
-  try { const s = localStorage.getItem('dashv2'); if (s) state = JSON.parse(s); } catch(e) {}
-  ['health','sleep','goals','todos','projects','notes'].forEach(k => { if (!state[k]) state[k] = []; });
+// === AUTH ===
+async function sendMagicLink() {
+  const email = document.getElementById('login-email').value.trim();
+  const msg = document.getElementById('login-msg');
+  const btn = document.getElementById('login-btn');
+  if (!email) {
+    msg.textContent = 'Please enter your email address.';
+    msg.className = 'login-msg error';
+    msg.style.display = 'block';
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader spin"></i> Sending...';
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.origin + window.location.pathname }
+  });
+  if (error) {
+    msg.textContent = 'Error: ' + error.message;
+    msg.className = 'login-msg error';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-send"></i> Send Magic Link';
+  } else {
+    msg.textContent = '✓ Magic link sent! Check your inbox and click the link to sign in.';
+    msg.className = 'login-msg';
+  }
+  msg.style.display = 'block';
 }
-function save() { try { localStorage.setItem('dashv2', JSON.stringify(state)); } catch(e) {} }
-function uid() { return Date.now() + Math.random().toString(36).slice(2); }
 
+async function signOut() {
+  await sb.auth.signOut();
+  state = { health: [], sleep: [], goals: [], todos: [], projects: [], notes: [] };
+}
+
+// === DATA LOADING ===
+async function loadFromSupabase() {
+  const uid = currentUser.id;
+  const [h, s, g, t, p, n] = await Promise.all([
+    sb.from('health').select('*').eq('user_id', uid).order('date', { ascending: false }),
+    sb.from('sleep').select('*').eq('user_id', uid).order('date', { ascending: false }),
+    sb.from('goals').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
+    sb.from('todos').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
+    sb.from('projects').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
+    sb.from('notes').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
+  ]);
+  // Map DB column names to the field names the render functions expect
+  state.health   = h.data || [];
+  state.sleep    = (s.data || []).map(r => ({ ...r, bed: r.bedtime, wake: r.wake_time }));
+  state.goals    = (g.data || []).map(r => ({ ...r, cat: r.category }));
+  state.todos    = (t.data || []).map(r => ({ ...r, due: r.due_date }));
+  state.projects = (p.data || []).map(r => ({ ...r, desc: r.description, start: r.start_date, end: r.end_date, tags: r.tags || [] }));
+  state.notes    = (n.data || []).map(r => ({ ...r, created: new Date(r.created_at).toLocaleDateString() }));
+}
+
+// === DEBOUNCE (for oninput DB writes) ===
+const _debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const _dbGoal = _debounce((id, val) => sb.from('goals').update({ current: parseFloat(val) || 0 }).eq('id', id), 600);
+const _dbProj = _debounce((id, val) => sb.from('projects').update({ progress: parseInt(val) || 0 }).eq('id', id), 600);
+
+// === NAVIGATION ===
 function nav(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -420,9 +529,11 @@ function nav(page) {
 
 function setDate() {
   const now = new Date();
-  document.getElementById('dateChip').textContent = now.toLocaleDateString('en-GB', { weekday:'short', month:'short', day:'numeric' });
+  const chip = document.getElementById('dateChip');
+  if (chip) chip.textContent = now.toLocaleDateString('en-GB', { weekday:'short', month:'short', day:'numeric' });
   const h = now.getHours();
-  document.getElementById('greeting').textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + ' ✦';
+  const greeting = document.getElementById('greeting');
+  if (greeting) greeting.textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + ' ✦';
 }
 
 function openModal(id) { document.getElementById(id).style.display = 'flex'; }
@@ -434,9 +545,22 @@ function pickColor(el, c) {
   selectedNoteColor = c;
 }
 
-function saveHealth() {
-  const entry = { id: uid(), date: new Date().toISOString().split('T')[0], steps: parseInt(document.getElementById('h-steps').value)||0, water: parseInt(document.getElementById('h-water').value)||0, weight: parseFloat(document.getElementById('h-weight').value)||0, mood: parseInt(document.getElementById('h-mood').value)||0, notes: document.getElementById('h-notes').value };
-  state.health.unshift(entry); save(); closeModal('healthModal');
+// === HEALTH ===
+async function saveHealth() {
+  if (!currentUser) return;
+  const entry = {
+    user_id: currentUser.id,
+    date: new Date().toISOString().split('T')[0],
+    steps: parseInt(document.getElementById('h-steps').value) || 0,
+    water: parseInt(document.getElementById('h-water').value) || 0,
+    weight: parseFloat(document.getElementById('h-weight').value) || null,
+    mood: parseInt(document.getElementById('h-mood').value) || null,
+    notes: document.getElementById('h-notes').value
+  };
+  const { data, error } = await sb.from('health').insert(entry).select().single();
+  if (error) { console.error(error); return; }
+  state.health.unshift(data);
+  closeModal('healthModal');
   ['h-steps','h-water','h-weight','h-mood','h-notes'].forEach(id => document.getElementById(id).value = '');
   render();
 }
@@ -457,9 +581,22 @@ function renderHealth() {
     `<div style="display:flex;flex-direction:column;gap:8px">${md.map(d=>`<div style="display:flex;align-items:center;gap:10px"><div style="font-size:11px;color:var(--muted);width:50px">${d.date.slice(5)}</div><div style="flex:1;height:8px;background:var(--bg4);border-radius:100px;overflow:hidden"><div style="width:${d.mood*10}%;height:100%;background:${d.mood>=8?'var(--green)':d.mood>=5?'var(--amber)':'var(--red)'};border-radius:100px"></div></div><div style="font-size:12px;width:16px">${d.mood}</div></div>`).join('')}</div>`;
 }
 
-function saveSleep() {
-  state.sleep.unshift({ id: uid(), date: document.getElementById('s-date').value||new Date().toISOString().split('T')[0], hours: parseFloat(document.getElementById('s-hours').value)||0, bed: document.getElementById('s-bed').value, wake: document.getElementById('s-wake').value, quality: parseInt(document.getElementById('s-quality').value)||3 });
-  save(); closeModal('sleepModal'); render();
+// === SLEEP ===
+async function saveSleep() {
+  if (!currentUser) return;
+  const entry = {
+    user_id: currentUser.id,
+    date: document.getElementById('s-date').value || new Date().toISOString().split('T')[0],
+    hours: parseFloat(document.getElementById('s-hours').value) || null,
+    bedtime: document.getElementById('s-bed').value || null,
+    wake_time: document.getElementById('s-wake').value || null,
+    quality: parseInt(document.getElementById('s-quality').value) || null
+  };
+  const { data, error } = await sb.from('sleep').insert(entry).select().single();
+  if (error) { console.error(error); return; }
+  state.sleep.unshift({ ...data, bed: data.bedtime, wake: data.wake_time });
+  closeModal('sleepModal');
+  render();
 }
 function renderSleep() {
   const r = state.sleep[0] || {};
@@ -478,15 +615,40 @@ function renderSleep() {
     `<div style="display:flex;flex-direction:column;gap:10px">${s7.map(d=>`<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:12px;color:var(--muted)">${d.date.slice(5)}</div><div style="font-size:13px">${qm[d.quality]||'—'}</div></div>`).join('')}</div>`;
 }
 
-function saveGoal() {
-  const g = { id: uid(), title: document.getElementById('g-title').value, cat: document.getElementById('g-cat').value, target: parseFloat(document.getElementById('g-target').value)||100, current: parseFloat(document.getElementById('g-current').value)||0, unit: document.getElementById('g-unit').value, deadline: document.getElementById('g-deadline').value, done: false };
-  if (!g.title) return;
-  state.goals.push(g); save(); closeModal('goalModal');
-  ['g-title','g-target','g-current','g-unit','g-deadline'].forEach(id => document.getElementById(id).value='');
+// === GOALS ===
+async function saveGoal() {
+  if (!currentUser) return;
+  const title = document.getElementById('g-title').value;
+  if (!title) return;
+  const entry = {
+    user_id: currentUser.id,
+    title,
+    category: document.getElementById('g-cat').value,
+    target: parseFloat(document.getElementById('g-target').value) || 100,
+    current: parseFloat(document.getElementById('g-current').value) || 0,
+    unit: document.getElementById('g-unit').value,
+    deadline: document.getElementById('g-deadline').value || null,
+    done: false
+  };
+  const { data, error } = await sb.from('goals').insert(entry).select().single();
+  if (error) { console.error(error); return; }
+  state.goals.push({ ...data, cat: data.category });
+  closeModal('goalModal');
+  ['g-title','g-target','g-current','g-unit','g-deadline'].forEach(id => document.getElementById(id).value = '');
   render();
 }
-function updateGoal(id, val) { const g = state.goals.find(g=>g.id===id); if(g){g.current=parseFloat(val)||0;save();renderGoals();} }
-function deleteGoal(id) { state.goals = state.goals.filter(g=>g.id!==id); save(); render(); }
+function updateGoal(id, val) {
+  const g = state.goals.find(g => g.id === id);
+  if (!g) return;
+  g.current = parseFloat(val) || 0;
+  renderGoals();
+  _dbGoal(id, val);
+}
+async function deleteGoal(id) {
+  state.goals = state.goals.filter(g => g.id !== id);
+  render();
+  await sb.from('goals').delete().eq('id', id);
+}
 const catColors = {Fitness:'var(--green)',Learning:'var(--accent2)',Finance:'var(--amber)',Career:'var(--teal)',Personal:'var(--pink)'};
 function renderGoals() {
   const el = document.getElementById('goals-list');
@@ -499,15 +661,38 @@ function renderGoals() {
   }).join('');
 }
 
-function saveTodo() {
-  const t = { id: uid(), text: document.getElementById('t-text').value, priority: document.getElementById('t-priority').value, due: document.getElementById('t-due').value, project: document.getElementById('t-project').value, done: false, created: Date.now() };
-  if (!t.text) return;
-  state.todos.push(t); save(); closeModal('todoModal');
-  ['t-text','t-due','t-project'].forEach(id => document.getElementById(id).value='');
+// === TODOS ===
+async function saveTodo() {
+  if (!currentUser) return;
+  const text = document.getElementById('t-text').value;
+  if (!text) return;
+  const entry = {
+    user_id: currentUser.id,
+    text,
+    priority: document.getElementById('t-priority').value,
+    due_date: document.getElementById('t-due').value || null,
+    project: document.getElementById('t-project').value,
+    done: false
+  };
+  const { data, error } = await sb.from('todos').insert(entry).select().single();
+  if (error) { console.error(error); return; }
+  state.todos.push({ ...data, due: data.due_date });
+  closeModal('todoModal');
+  ['t-text','t-due','t-project'].forEach(id => document.getElementById(id).value = '');
   render();
 }
-function toggleTodo(id) { const t = state.todos.find(t=>t.id===id); if(t){t.done=!t.done;save();renderTodos();} }
-function deleteTodo(id) { state.todos = state.todos.filter(t=>t.id!==id); save(); renderTodos(); }
+async function toggleTodo(id) {
+  const t = state.todos.find(t => t.id === id);
+  if (!t) return;
+  t.done = !t.done;
+  renderTodos();
+  await sb.from('todos').update({ done: t.done }).eq('id', id);
+}
+async function deleteTodo(id) {
+  state.todos = state.todos.filter(t => t.id !== id);
+  renderTodos();
+  await sb.from('todos').delete().eq('id', id);
+}
 function filterTodos(f) {
   todoFilter = f;
   ['all','high','med','low'].forEach(x => { const el = document.getElementById('f-'+x); if(el) el.style.background = x===f?'var(--accent)':''; });
@@ -528,15 +713,39 @@ function renderTodos() {
   if (de) de.innerHTML = done.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-check"></i>Nothing done yet</div>' : done.map(renderTodoItem).join('');
 }
 
-function saveProject() {
-  const p = { id: uid(), name: document.getElementById('p-name').value, desc: document.getElementById('p-desc').value, status: document.getElementById('p-status').value, progress: parseInt(document.getElementById('p-prog').value)||0, start: document.getElementById('p-start').value, end: document.getElementById('p-end').value, tags: document.getElementById('p-tags').value.split(',').map(t=>t.trim()).filter(Boolean) };
-  if (!p.name) return;
-  state.projects.push(p); save(); closeModal('projectModal');
-  ['p-name','p-desc','p-prog','p-start','p-end','p-tags'].forEach(id => document.getElementById(id).value='');
+// === PROJECTS ===
+async function saveProject() {
+  if (!currentUser) return;
+  const name = document.getElementById('p-name').value;
+  if (!name) return;
+  const entry = {
+    user_id: currentUser.id,
+    name,
+    description: document.getElementById('p-desc').value,
+    status: document.getElementById('p-status').value,
+    progress: parseInt(document.getElementById('p-prog').value) || 0,
+    start_date: document.getElementById('p-start').value || null,
+    end_date: document.getElementById('p-end').value || null,
+    tags: document.getElementById('p-tags').value.split(',').map(t=>t.trim()).filter(Boolean)
+  };
+  const { data, error } = await sb.from('projects').insert(entry).select().single();
+  if (error) { console.error(error); return; }
+  state.projects.push({ ...data, desc: data.description, start: data.start_date, end: data.end_date, tags: data.tags || [] });
+  closeModal('projectModal');
+  ['p-name','p-desc','p-prog','p-start','p-end','p-tags'].forEach(id => document.getElementById(id).value = '');
   render();
 }
-function deleteProject(id) { state.projects = state.projects.filter(p=>p.id!==id); save(); renderProjects(); }
-function updateProjectProgress(id, val) { const p = state.projects.find(p=>p.id===id); if(p){p.progress=parseInt(val)||0;save();} }
+async function deleteProject(id) {
+  state.projects = state.projects.filter(p => p.id !== id);
+  renderProjects();
+  await sb.from('projects').delete().eq('id', id);
+}
+function updateProjectProgress(id, val) {
+  const p = state.projects.find(p => p.id === id);
+  if (!p) return;
+  p.progress = parseInt(val) || 0;
+  _dbProj(id, val);
+}
 function renderProjects() {
   const el = document.getElementById('projects-grid');
   if (!el) return;
@@ -548,13 +757,29 @@ function renderProjects() {
   }).join('');
 }
 
-function saveNote() {
-  state.notes.unshift({ id: uid(), title: document.getElementById('n-title').value||'Note', body: document.getElementById('n-body').value, color: selectedNoteColor, created: new Date().toLocaleDateString() });
-  save(); closeModal('noteModal');
-  document.getElementById('n-title').value=''; document.getElementById('n-body').value='';
+// === NOTES ===
+async function saveNote() {
+  if (!currentUser) return;
+  const entry = {
+    user_id: currentUser.id,
+    title: document.getElementById('n-title').value || 'Note',
+    body: document.getElementById('n-body').value,
+    color: selectedNoteColor
+  };
+  const { data, error } = await sb.from('notes').insert(entry).select().single();
+  if (error) { console.error(error); return; }
+  data.created = new Date(data.created_at).toLocaleDateString();
+  state.notes.unshift(data);
+  closeModal('noteModal');
+  document.getElementById('n-title').value = '';
+  document.getElementById('n-body').value = '';
   render();
 }
-function deleteNote(id) { state.notes = state.notes.filter(n=>n.id!==id); save(); renderNotes(); }
+async function deleteNote(id) {
+  state.notes = state.notes.filter(n => n.id !== id);
+  renderNotes();
+  await sb.from('notes').delete().eq('id', id);
+}
 function renderNotes() {
   const el = document.getElementById('notes-grid');
   if (!el) return;
@@ -562,6 +787,7 @@ function renderNotes() {
   el.innerHTML = state.notes.map(n=>`<div style="background:${n.color||'var(--bg2)'};border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative"><button class="btn" style="position:absolute;top:10px;right:10px;padding:3px 6px;opacity:0.5" onclick="deleteNote('${n.id}')"><i class="ti ti-x" style="font-size:13px"></i></button><div style="font-family:var(--font-h);font-size:14px;font-weight:600;margin-bottom:8px;padding-right:30px">${n.title}</div><div style="font-size:13px;color:var(--muted);white-space:pre-wrap;line-height:1.6">${n.body}</div><div style="font-size:11px;color:var(--muted);margin-top:12px;opacity:0.6">${n.created}</div></div>`).join('');
 }
 
+// === OVERVIEW ===
 function renderOverview() {
   const totalTodos = state.todos.filter(t=>!t.done).length;
   const doneGoals = state.goals.filter(g=>Math.round((g.current/g.target)*100)>=100).length;
@@ -595,7 +821,27 @@ function render() {
   if (id==='notes') renderNotes();
 }
 
-load(); setDate(); render();
+// === INIT ===
+setDate();
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  currentUser = session?.user || null;
+  document.getElementById('loading-screen').style.display = 'none';
+  if (currentUser) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    await loadFromSupabase();
+    setDate();
+    render();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
+}
 
 document.addEventListener('keydown', e => {
   if (e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.style.display='none');
