@@ -155,6 +155,10 @@
   .spin { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* Error toast */
+  #err-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #2a1414; border: 1px solid rgba(248,113,113,0.35); color: var(--red); font-size: 13px; padding: 10px 18px; border-radius: var(--r2); z-index: 300; max-width: 90vw; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  #err-toast.show { opacity: 1; }
+
   @media (max-width: 768px) {
     .sidebar { width: 56px; min-width: 56px; }
     .nav-item span, .nav-label, .sidebar-footer { display: none; }
@@ -447,6 +451,8 @@
   </div>
 </div>
 
+<div id="err-toast"></div>
+
 <script>
 // === SUPABASE ===
 const SUPABASE_URL = 'https://vqohubvmpffzxsazlxky.supabase.co';
@@ -513,6 +519,16 @@ async function loadFromSupabase() {
   state.notes    = (n.data || []).map(r => ({ ...r, created: new Date(r.created_at).toLocaleDateString() }));
 }
 
+// === ERROR TOAST ===
+let _errTimer;
+function showError(msg) {
+  const t = document.getElementById('err-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_errTimer);
+  _errTimer = setTimeout(() => t.classList.remove('show'), 5000);
+}
+
 // === DEBOUNCE (for oninput DB writes) ===
 const _debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 const _dbGoal = _debounce((id, val) => sb.from('goals').update({ current: parseFloat(val) || 0 }).eq('id', id), 600);
@@ -558,7 +574,7 @@ async function saveHealth() {
     notes: document.getElementById('h-notes').value
   };
   const { data, error } = await sb.from('health').insert(entry).select().single();
-  if (error) { console.error(error); return; }
+  if (error) { console.error(error); showError(error.message); return; }
   state.health.unshift(data);
   closeModal('healthModal');
   ['h-steps','h-water','h-weight','h-mood','h-notes'].forEach(id => document.getElementById(id).value = '');
@@ -593,7 +609,7 @@ async function saveSleep() {
     quality: parseInt(document.getElementById('s-quality').value) || null
   };
   const { data, error } = await sb.from('sleep').insert(entry).select().single();
-  if (error) { console.error(error); return; }
+  if (error) { console.error(error); showError(error.message); return; }
   state.sleep.unshift({ ...data, bed: data.bedtime, wake: data.wake_time });
   closeModal('sleepModal');
   render();
@@ -631,7 +647,7 @@ async function saveGoal() {
     done: false
   };
   const { data, error } = await sb.from('goals').insert(entry).select().single();
-  if (error) { console.error(error); return; }
+  if (error) { console.error(error); showError(error.message); return; }
   state.goals.push({ ...data, cat: data.category });
   closeModal('goalModal');
   ['g-title','g-target','g-current','g-unit','g-deadline'].forEach(id => document.getElementById(id).value = '');
@@ -675,7 +691,7 @@ async function saveTodo() {
     done: false
   };
   const { data, error } = await sb.from('todos').insert(entry).select().single();
-  if (error) { console.error(error); return; }
+  if (error) { console.error(error); showError(error.message); return; }
   state.todos.push({ ...data, due: data.due_date });
   closeModal('todoModal');
   ['t-text','t-due','t-project'].forEach(id => document.getElementById(id).value = '');
@@ -729,7 +745,7 @@ async function saveProject() {
     tags: document.getElementById('p-tags').value.split(',').map(t=>t.trim()).filter(Boolean)
   };
   const { data, error } = await sb.from('projects').insert(entry).select().single();
-  if (error) { console.error(error); return; }
+  if (error) { console.error(error); showError(error.message); return; }
   state.projects.push({ ...data, desc: data.description, start: data.start_date, end: data.end_date, tags: data.tags || [] });
   closeModal('projectModal');
   ['p-name','p-desc','p-prog','p-start','p-end','p-tags'].forEach(id => document.getElementById(id).value = '');
@@ -767,7 +783,7 @@ async function saveNote() {
     color: selectedNoteColor
   };
   const { data, error } = await sb.from('notes').insert(entry).select().single();
-  if (error) { console.error(error); return; }
+  if (error) { console.error(error); showError(error.message); return; }
   data.created = new Date(data.created_at).toLocaleDateString();
   state.notes.unshift(data);
   closeModal('noteModal');
