@@ -16,7 +16,7 @@ create table if not exists health (
   user_id     uuid references auth.users(id) on delete cascade,
   date        date not null default current_date,
   steps       integer default 0,
-  water       integer default 0,   -- glasses
+  water       integer default 0,   -- tenths of a litre (e.g. 25 = 2.5 L)
   weight      numeric(5,2),        -- kg
   mood        smallint check (mood between 1 and 10),
   notes       text,
@@ -163,6 +163,36 @@ create policy "Users can manage their own notes"
   with check (auth.uid() = user_id);
 
 create index if not exists notes_user_id on notes(user_id);
+
+
+-- ============================================================
+-- EVENTS  (calendar)
+-- ============================================================
+create table if not exists events (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references auth.users(id) on delete cascade,
+  title       text not null,
+  date        date not null,
+  start_time  time,
+  end_time    time,
+  color       text default '#7c6af7',
+  category    text default 'Other'
+                check (category in ('Gym', 'Work', 'Free Time', 'Other')),
+  repeat      text default 'none'
+                check (repeat in ('none', 'daily', 'weekly', 'monthly')),
+  notes       text default '',
+  created_at  timestamptz default now()
+);
+
+alter table events enable row level security;
+
+drop policy if exists "Users can manage their own events" on events;
+create policy "Users can manage their own events"
+  on events for all
+  using  (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create index if not exists events_user_date on events(user_id, date);
 
 
 -- ============================================================

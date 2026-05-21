@@ -218,15 +218,15 @@
 
   /* ── Calendar week view ──────────────────────────────────────────────── */
   .cal-week-view-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-  .cal-wday { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); display: flex; flex-direction: column; overflow: hidden; transition: border-color var(--dur-sm) var(--ease-out); cursor: pointer; }
+  .cal-wday { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); display: flex; flex-direction: column; overflow: hidden; transition: border-color var(--dur-sm) var(--ease-out); cursor: pointer; min-height: 520px; }
   .cal-wday:hover { border-color: var(--border2); }
   .cal-wday.today { border-color: var(--accent); }
-  .cal-wday-header { padding: 10px 8px 8px; border-bottom: 1px solid var(--border); text-align: center; pointer-events: none; }
+  .cal-wday-header { padding: 12px 8px 10px; border-bottom: 1px solid var(--border); text-align: center; pointer-events: none; }
   .cal-wday-name { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
-  .cal-wday-num { font-size: 22px; font-weight: 700; font-family: var(--font-h); margin-top: 3px; color: var(--text); }
+  .cal-wday-num { font-size: 26px; font-weight: 700; font-family: var(--font-h); margin-top: 4px; color: var(--text); }
   .cal-wday.today .cal-wday-num { color: var(--accent2); }
-  .cal-wday-events { padding: 6px; flex: 1; overflow-y: auto; min-height: 200px; }
-  .cal-wday-empty { font-size: 11px; color: var(--muted); text-align: center; padding: 16px 4px; opacity: 0.45; }
+  .cal-wday-events { padding: 8px; flex: 1; overflow-y: auto; }
+  .cal-wday-empty { font-size: 11px; color: var(--muted); text-align: center; padding: 24px 4px; opacity: 0.4; }
   .cal-chip-time { font-size: 9px; opacity: 0.72; margin-right: 2px; }
   /* ── Overview today's events ─────────────────────────────────────────── */
   .ov-event-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: opacity var(--dur-xs); }
@@ -1386,10 +1386,12 @@ function renderCalWeek() {
     const evs     = getEventsForDate(dateStr)
                       .sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99'));
     const chips   = evs.map(ev =>
-      `<div class="cal-chip" style="background:${ev.color||'#7c6af7'};margin-bottom:5px;white-space:normal;line-height:1.4"
+      `<div class="cal-chip" style="background:${ev.color||'#7c6af7'};margin-bottom:6px;white-space:normal;line-height:1.5;padding:5px 7px;font-size:11px"
             onclick="event.stopPropagation();openCalModal('${ev.id}')"
             title="${ev.title.replace(/"/g,'&quot;')}">
-         ${ev.start_time ? `<span class="cal-chip-time">${ev.start_time.slice(0,5)}</span>` : ''}${ev.title}
+         ${ev.start_time ? `<div class="cal-chip-time" style="font-size:10px;opacity:0.75;margin-bottom:1px">${ev.start_time.slice(0,5)}${ev.end_time ? ' – '+ev.end_time.slice(0,5) : ''}</div>` : ''}
+         <div style="font-weight:700">${ev.title}</div>
+         ${ev.notes ? `<div style="font-size:10px;opacity:0.65;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.notes}</div>` : ''}
        </div>`
     ).join('');
 
