@@ -529,17 +529,6 @@ function showError(msg) {
   _errTimer = setTimeout(() => t.classList.remove('show'), 5000);
 }
 
-// === SUPABASE QUERY WITH TIMEOUT ===
-// Turns a silently-hanging request (e.g. paused project) into a visible error
-function sbQuery(q) {
-  return Promise.race([
-    q,
-    new Promise((_, rej) =>
-      setTimeout(() => rej(new Error('Request timed out — your Supabase project may be paused. Go to supabase.com/dashboard and look for a "Resume project" button.')), 10000)
-    )
-  ]);
-}
-
 // === DEBOUNCE (for oninput DB writes) ===
 const _debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 const _dbGoal = _debounce((id, val) => sb.from('goals').update({ current: parseFloat(val) || 0 }).eq('id', id), 600);
@@ -589,7 +578,7 @@ async function saveHealth() {
       mood: parseInt(document.getElementById('h-mood').value) || null,
       notes: document.getElementById('h-notes').value
     };
-    const { data, error } = await sbQuery(sb.from('health').insert(entry).select().single());
+    const { data, error } = await sb.from('health').insert(entry).select().single();
     if (error) throw error;
     state.health.unshift(data);
     closeModal('healthModal'); resetBtn();
@@ -630,7 +619,7 @@ async function saveSleep() {
       wake_time: document.getElementById('s-wake').value || null,
       quality: parseInt(document.getElementById('s-quality').value) || null
     };
-    const { data, error } = await sbQuery(sb.from('sleep').insert(entry).select().single());
+    const { data, error } = await sb.from('sleep').insert(entry).select().single();
     if (error) throw error;
     state.sleep.unshift({ ...data, bed: data.bedtime, wake: data.wake_time });
     closeModal('sleepModal'); resetBtn();
@@ -674,7 +663,7 @@ async function saveGoal() {
       deadline: document.getElementById('g-deadline').value || null,
       done: false
     };
-    const { data, error } = await sbQuery(sb.from('goals').insert(entry).select().single());
+    const { data, error } = await sb.from('goals').insert(entry).select().single();
     if (error) throw error;
     state.goals.push({ ...data, cat: data.category });
     closeModal('goalModal'); resetBtn();
@@ -724,7 +713,7 @@ async function saveTodo() {
       project: document.getElementById('t-project').value,
       done: false
     };
-    const { data, error } = await sbQuery(sb.from('todos').insert(entry).select().single());
+    const { data, error } = await sb.from('todos').insert(entry).select().single();
     if (error) throw error;
     state.todos.push({ ...data, due: data.due_date });
     closeModal('todoModal'); resetBtn();
@@ -784,7 +773,7 @@ async function saveProject() {
       end_date: document.getElementById('p-end').value || null,
       tags: document.getElementById('p-tags').value.split(',').map(t=>t.trim()).filter(Boolean)
     };
-    const { data, error } = await sbQuery(sb.from('projects').insert(entry).select().single());
+    const { data, error } = await sb.from('projects').insert(entry).select().single();
     if (error) throw error;
     state.projects.push({ ...data, desc: data.description, start: data.start_date, end: data.end_date, tags: data.tags || [] });
     closeModal('projectModal'); resetBtn();
@@ -828,7 +817,7 @@ async function saveNote() {
       body: document.getElementById('n-body').value,
       color: selectedNoteColor
     };
-    const { data, error } = await sbQuery(sb.from('notes').insert(entry).select().single());
+    const { data, error } = await sb.from('notes').insert(entry).select().single();
     if (error) throw error;
     data.created = new Date(data.created_at).toLocaleDateString();
     state.notes.unshift(data);
@@ -887,15 +876,20 @@ function render() {
 // === INIT ===
 setDate();
 
-sb.auth.onAuthStateChange(async (event, session) => {
+sb.auth.onAuthStateChange((event, session) => {
   currentUser = session?.user || null;
   document.getElementById('loading-screen').style.display = 'none';
   if (currentUser) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
-    await loadFromSupabase();
-    setDate();
-    render();
+    // Defer DB calls so the auth callback returns first and releases Supabase's
+    // internal auth lock — calling them synchronously inside the callback causes
+    // every subsequent request to hang waiting for that same lock.
+    setTimeout(() =>
+      loadFromSupabase()
+        .then(() => { setDate(); render(); })
+        .catch(err => showError('Failed to load data: ' + err.message))
+    , 0);
   } else {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
