@@ -1,5 +1,6 @@
 -- ============================================================
 --  Personal Dashboard — Supabase Schema
+--  Safe to re-run: all statements are idempotent.
 --  Run this in: Supabase Dashboard → SQL Editor → New Query
 -- ============================================================
 
@@ -24,12 +25,13 @@ create table if not exists health (
 
 alter table health enable row level security;
 
+drop policy if exists "Users can manage their own health data" on health;
 create policy "Users can manage their own health data"
   on health for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create index health_user_date on health(user_id, date desc);
+create index if not exists health_user_date on health(user_id, date desc);
 
 
 -- ============================================================
@@ -48,12 +50,13 @@ create table if not exists sleep (
 
 alter table sleep enable row level security;
 
+drop policy if exists "Users can manage their own sleep data" on sleep;
 create policy "Users can manage their own sleep data"
   on sleep for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create index sleep_user_date on sleep(user_id, date desc);
+create index if not exists sleep_user_date on sleep(user_id, date desc);
 
 
 -- ============================================================
@@ -75,12 +78,13 @@ create table if not exists goals (
 
 alter table goals enable row level security;
 
+drop policy if exists "Users can manage their own goals" on goals;
 create policy "Users can manage their own goals"
   on goals for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create index goals_user_id on goals(user_id);
+create index if not exists goals_user_id on goals(user_id);
 
 
 -- ============================================================
@@ -100,12 +104,13 @@ create table if not exists todos (
 
 alter table todos enable row level security;
 
+drop policy if exists "Users can manage their own todos" on todos;
 create policy "Users can manage their own todos"
   on todos for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create index todos_user_done on todos(user_id, done);
+create index if not exists todos_user_done on todos(user_id, done);
 
 
 -- ============================================================
@@ -127,12 +132,13 @@ create table if not exists projects (
 
 alter table projects enable row level security;
 
+drop policy if exists "Users can manage their own projects" on projects;
 create policy "Users can manage their own projects"
   on projects for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create index projects_user_status on projects(user_id, status);
+create index if not exists projects_user_status on projects(user_id, status);
 
 
 -- ============================================================
@@ -150,12 +156,13 @@ create table if not exists notes (
 
 alter table notes enable row level security;
 
+drop policy if exists "Users can manage their own notes" on notes;
 create policy "Users can manage their own notes"
   on notes for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create index notes_user_id on notes(user_id);
+create index if not exists notes_user_id on notes(user_id);
 
 
 -- ============================================================
@@ -169,6 +176,11 @@ begin
 end;
 $$;
 
+drop trigger if exists goals_updated_at    on goals;
+drop trigger if exists todos_updated_at    on todos;
+drop trigger if exists projects_updated_at on projects;
+drop trigger if exists notes_updated_at    on notes;
+
 create trigger goals_updated_at    before update on goals    for each row execute function update_updated_at();
 create trigger todos_updated_at    before update on todos    for each row execute function update_updated_at();
 create trigger projects_updated_at before update on projects for each row execute function update_updated_at();
@@ -176,5 +188,5 @@ create trigger notes_updated_at    before update on notes    for each row execut
 
 
 -- ============================================================
--- DONE — all tables created with RLS policies
+-- DONE — all tables, policies, and triggers are ready
 -- ============================================================
