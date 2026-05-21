@@ -156,7 +156,7 @@
   ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 100px; }
   .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
   .empty-state i { font-size: 36px; margin-bottom: 10px; display: block; opacity: 0.4; }
-  .overview-hero { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+  .overview-hero { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 20px; }
 
   /* Login & loading screens */
   #loading-screen, #login-screen {
@@ -216,6 +216,24 @@
   .btn-danger { background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.3); color: var(--red); }
   .btn-danger:hover { background: rgba(248,113,113,0.22); border-color: rgba(248,113,113,0.45); }
 
+  /* ── Calendar week view ──────────────────────────────────────────────── */
+  .cal-week-view-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-wday { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); display: flex; flex-direction: column; overflow: hidden; transition: border-color var(--dur-sm) var(--ease-out); cursor: pointer; }
+  .cal-wday:hover { border-color: var(--border2); }
+  .cal-wday.today { border-color: var(--accent); }
+  .cal-wday-header { padding: 10px 8px 8px; border-bottom: 1px solid var(--border); text-align: center; pointer-events: none; }
+  .cal-wday-name { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+  .cal-wday-num { font-size: 22px; font-weight: 700; font-family: var(--font-h); margin-top: 3px; color: var(--text); }
+  .cal-wday.today .cal-wday-num { color: var(--accent2); }
+  .cal-wday-events { padding: 6px; flex: 1; overflow-y: auto; min-height: 200px; }
+  .cal-wday-empty { font-size: 11px; color: var(--muted); text-align: center; padding: 16px 4px; opacity: 0.45; }
+  .cal-chip-time { font-size: 9px; opacity: 0.72; margin-right: 2px; }
+  /* ── Overview today's events ─────────────────────────────────────────── */
+  .ov-event-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: opacity var(--dur-xs); }
+  .ov-event-item:last-child { border-bottom: none; }
+  .ov-event-item:hover { opacity: 0.75; }
+  .ov-event-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
   /* ── Skeleton loading ──────────────────────────────────────────────── */
   .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; border-radius: var(--r2); }
   .skeleton-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
@@ -228,7 +246,7 @@
     .sidebar { width: 56px; min-width: 56px; }
     .nav-item span, .nav-label, .sidebar-footer { display: none; }
     .main { padding: 16px; }
-    .grid-4, .overview-hero { grid-template-columns: repeat(2,1fr); }
+    .grid-4, .overview-hero { grid-template-columns: repeat(2,1fr) !important; }
     .grid-3 { grid-template-columns: 1fr 1fr; }
     .grid-2 { grid-template-columns: 1fr; }
   }
@@ -305,8 +323,9 @@
         <div class="page-title" id="greeting">Good morning ✦</div>
       </div>
       <div class="overview-hero" id="overview-hero"></div>
-      <div class="grid-2" style="gap:16px">
+      <div class="grid-3" style="gap:16px">
         <div class="card"><div class="card-title">Today's Tasks</div><div id="ov-todos"></div></div>
+        <div class="card"><div class="card-title">Today's Events</div><div id="ov-events"></div></div>
         <div class="card"><div class="card-title">Active Goals</div><div id="ov-goals"></div></div>
       </div>
       <div style="height:16px"></div>
@@ -410,17 +429,21 @@
         <div class="page-title">Calendar</div>
         <div style="display:flex;align-items:center;gap:8px">
           <button class="btn" onclick="calNav(-1)"><i class="ti ti-chevron-left"></i></button>
-          <span id="cal-month-label" style="font-family:var(--font-h);font-weight:600;font-size:15px;min-width:150px;text-align:center"></span>
+          <span id="cal-month-label" style="font-family:var(--font-h);font-weight:600;font-size:15px;min-width:160px;text-align:center"></span>
           <button class="btn" onclick="calNav(1)"><i class="ti ti-chevron-right"></i></button>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button id="cal-view-month" class="btn btn-primary" onclick="setCalView('month')"><i class="ti ti-layout-grid"></i> Month</button>
+          <button id="cal-view-week"  class="btn"             onclick="setCalView('week')"><i class="ti ti-columns"></i> Week</button>
         </div>
         <button class="btn btn-primary" onclick="openCalModal(null)"><i class="ti ti-plus"></i> New Event</button>
       </div>
-      <div class="cal-week-header">
+      <div class="cal-week-header" id="cal-month-header">
         <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
       </div>
       <div class="cal-grid" id="cal-grid"></div>
       <div class="card" style="margin-top:20px">
-        <div class="card-title">This Month's Time</div>
+        <div class="card-title" id="cal-analytics-title">This Month's Time</div>
         <div id="cal-analytics" style="display:flex;align-items:center;gap:36px;flex-wrap:wrap"></div>
       </div>
     </div>
@@ -736,8 +759,9 @@ function countUp(el, to, fmt = n => n) {
 function showSkeletons() {
   const skCard = () => `<div class="skeleton-card"><div class="skeleton sk-line sk-tall"></div><div class="skeleton sk-line sk-short"></div></div>`;
   const set = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
-  set('overview-hero', Array(4).fill(0).map(skCard).join(''));
+  set('overview-hero', Array(5).fill(0).map(skCard).join(''));
   set('ov-todos',    `<div style="display:flex;flex-direction:column;gap:10px">${Array(4).fill(`<div class="skeleton" style="height:34px;border-radius:8px"></div>`).join('')}</div>`);
+  set('ov-events',   `<div style="display:flex;flex-direction:column;gap:10px">${Array(3).fill(`<div class="skeleton" style="height:34px;border-radius:8px"></div>`).join('')}</div>`);
   set('ov-goals',   `<div style="display:flex;flex-direction:column;gap:12px">${Array(3).fill(`<div class="skeleton" style="height:26px;border-radius:8px"></div>`).join('')}</div>`);
   set('ov-projects',`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">${Array(2).fill(0).map(skCard).join('')}</div>`);
 }
@@ -1195,6 +1219,8 @@ function renderGames(flash = false) {
       });
     }, 80); // let new DOM paint first
   }
+  // Keep overview CCU stat in sync whenever game data refreshes
+  updateOverviewCCU();
 }
 
 // === CALENDAR ===
@@ -1233,13 +1259,31 @@ let calYear     = new Date().getFullYear();
 let calMonth    = new Date().getMonth();   // 0-indexed
 let calEditId   = null;
 let calSelColor = CAL_COLORS[0];
+let calView     = 'month'; // 'month' | 'week'
+// Sunday of the current week
+let calWeekStart = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d; })();
 
 function pad2(n) { return String(n).padStart(2,'0'); }
 
 function calNav(dir) {
-  calMonth += dir;
-  if (calMonth > 11) { calMonth = 0; calYear++; }
-  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  if (calView === 'week') {
+    calWeekStart = new Date(calWeekStart);
+    calWeekStart.setDate(calWeekStart.getDate() + dir * 7);
+  } else {
+    calMonth += dir;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    if (calMonth < 0)  { calMonth = 11; calYear--; }
+  }
+  _animateNext = true;
+  renderCalendar();
+}
+
+function setCalView(v) {
+  calView = v;
+  const mb = document.getElementById('cal-view-month');
+  const wb = document.getElementById('cal-view-week');
+  if (mb) mb.className = 'btn' + (v === 'month' ? ' btn-primary' : '');
+  if (wb) wb.className = 'btn' + (v === 'week'  ? ' btn-primary' : '');
   _animateNext = true;
   renderCalendar();
 }
@@ -1261,21 +1305,29 @@ function getEventsForDate(dateStr) {
 }
 
 function renderCalendar() {
+  if (calView === 'week') renderCalWeek();
+  else                    renderCalMonth();
+}
+
+function renderCalMonth() {
+  const monthHeader = document.getElementById('cal-month-header');
+  if (monthHeader) monthHeader.style.display = '';
+  const grid = document.getElementById('cal-grid');
+  if (!grid) return;
+  grid.className = 'cal-grid';
+
   const label = document.getElementById('cal-month-label');
   if (label) label.textContent = `${CAL_MONTHS[calMonth]} ${calYear}`;
 
-  const firstWeekDay  = new Date(calYear, calMonth, 1).getDay();      // 0=Sun
+  const firstWeekDay  = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth   = new Date(calYear, calMonth + 1, 0).getDate();
   const daysInPrevMo  = new Date(calYear, calMonth, 0).getDate();
   const todayStr      = new Date().toISOString().split('T')[0];
-  const grid          = document.getElementById('cal-grid');
-  if (!grid) return;
 
   let html = '';
   for (let i = 0; i < 42; i++) {
     let day, mo, yr, isOther = false;
     if (i < firstWeekDay) {
-      // Overflow from previous month
       day = daysInPrevMo - firstWeekDay + 1 + i;
       mo  = calMonth - 1; yr = calYear;
       if (mo < 0) { mo = 11; yr--; }
@@ -1283,23 +1335,20 @@ function renderCalendar() {
     } else if (i - firstWeekDay < daysInMonth) {
       day = i - firstWeekDay + 1; mo = calMonth; yr = calYear;
     } else {
-      // Overflow into next month
       day = i - firstWeekDay - daysInMonth + 1;
       mo  = calMonth + 1; yr = calYear;
       if (mo > 11) { mo = 0; yr++; }
       isOther = true;
     }
-
-    const dateStr   = `${yr}-${pad2(mo + 1)}-${pad2(day)}`;
-    const isToday   = dateStr === todayStr;
-    const evs       = isOther ? [] : getEventsForDate(dateStr);
-    const chips     = evs.slice(0, 3).map(ev =>
+    const dateStr = `${yr}-${pad2(mo + 1)}-${pad2(day)}`;
+    const isToday = dateStr === todayStr;
+    const evs     = isOther ? [] : getEventsForDate(dateStr);
+    const chips   = evs.slice(0, 3).map(ev =>
       `<div class="cal-chip" style="background:${ev.color||'#7c6af7'}"
             onclick="event.stopPropagation();openCalModal('${ev.id}')"
             title="${ev.title.replace(/"/g,'&quot;')}">${ev.title}</div>`
     ).join('');
     const more = evs.length > 3 ? `<div class="cal-more">+${evs.length - 3} more</div>` : '';
-
     html += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}"
                   onclick="openCalModal(null,'${dateStr}')">
                <div class="cal-day-num">${day}</div>
@@ -1311,24 +1360,95 @@ function renderCalendar() {
   if (_animateNext) animateIn(grid, 6);
 }
 
+function renderCalWeek() {
+  const monthHeader = document.getElementById('cal-month-header');
+  if (monthHeader) monthHeader.style.display = 'none';
+  const grid = document.getElementById('cal-grid');
+  if (!grid) return;
+  grid.className = 'cal-week-view-grid';
+
+  // Label: "May 19 – May 25, 2026"
+  const ws  = calWeekStart;
+  const we  = new Date(ws); we.setDate(ws.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const label = document.getElementById('cal-month-label');
+  if (label) label.textContent = `${fmt(ws)} – ${fmt(we)}, ${we.getFullYear()}`;
+
+  const todayStr  = new Date().toISOString().split('T')[0];
+  const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html = '';
+
+  for (let i = 0; i < 7; i++) {
+    const d       = new Date(ws);
+    d.setDate(ws.getDate() + i);
+    const dateStr = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    const isToday = dateStr === todayStr;
+    const evs     = getEventsForDate(dateStr)
+                      .sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99'));
+    const chips   = evs.map(ev =>
+      `<div class="cal-chip" style="background:${ev.color||'#7c6af7'};margin-bottom:5px;white-space:normal;line-height:1.4"
+            onclick="event.stopPropagation();openCalModal('${ev.id}')"
+            title="${ev.title.replace(/"/g,'&quot;')}">
+         ${ev.start_time ? `<span class="cal-chip-time">${ev.start_time.slice(0,5)}</span>` : ''}${ev.title}
+       </div>`
+    ).join('');
+
+    html += `<div class="cal-wday${isToday ? ' today' : ''}" onclick="openCalModal(null,'${dateStr}')">
+      <div class="cal-wday-header">
+        <div class="cal-wday-name">${DAY_NAMES[d.getDay()]}</div>
+        <div class="cal-wday-num">${d.getDate()}</div>
+      </div>
+      <div class="cal-wday-events" onclick="event.stopPropagation();openCalModal(null,'${dateStr}')">
+        ${chips || '<div class="cal-wday-empty">No events</div>'}
+      </div>
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+  renderCalAnalytics();
+  if (_animateNext) animateIn(grid, 40);
+}
+
 function renderCalAnalytics() {
-  const el = document.getElementById('cal-analytics');
+  const el      = document.getElementById('cal-analytics');
+  const titleEl = document.getElementById('cal-analytics-title');
   if (!el) return;
 
-  const daysInMonth  = new Date(calYear, calMonth + 1, 0).getDate();
-  const totalMinutes = daysInMonth * 24 * 60;
   const catMins = { Work: 0, Gym: 0, 'Free Time': 0, Other: 0 };
+  let totalMinutes;
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${calYear}-${pad2(calMonth + 1)}-${pad2(d)}`;
-    for (const ev of getEventsForDate(dateStr)) {
-      let mins = 60; // default 1 h when no times set
-      if (ev.start_time && ev.end_time) {
-        const [sh, sm] = ev.start_time.split(':').map(Number);
-        const [eh, em] = ev.end_time.split(':').map(Number);
-        mins = Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+  if (calView === 'week') {
+    if (titleEl) titleEl.textContent = "This Week's Time";
+    totalMinutes = 7 * 24 * 60;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(calWeekStart);
+      d.setDate(calWeekStart.getDate() + i);
+      const dateStr = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+      for (const ev of getEventsForDate(dateStr)) {
+        let mins = 60;
+        if (ev.start_time && ev.end_time) {
+          const [sh, sm] = ev.start_time.split(':').map(Number);
+          const [eh, em] = ev.end_time.split(':').map(Number);
+          mins = Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+        }
+        catMins[ev.category] = (catMins[ev.category] || 0) + mins;
       }
-      catMins[ev.category] = (catMins[ev.category] || 0) + mins;
+    }
+  } else {
+    if (titleEl) titleEl.textContent = "This Month's Time";
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    totalMinutes = daysInMonth * 24 * 60;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${calYear}-${pad2(calMonth + 1)}-${pad2(d)}`;
+      for (const ev of getEventsForDate(dateStr)) {
+        let mins = 60;
+        if (ev.start_time && ev.end_time) {
+          const [sh, sm] = ev.start_time.split(':').map(Number);
+          const [eh, em] = ev.end_time.split(':').map(Number);
+          mins = Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+        }
+        catMins[ev.category] = (catMins[ev.category] || 0) + mins;
+      }
     }
   }
 
@@ -1485,17 +1605,55 @@ async function deleteCalEvent() {
 }
 
 // === OVERVIEW ===
+function renderOverviewEvents() {
+  const el = document.getElementById('ov-events');
+  if (!el) return;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const evs = getEventsForDate(todayStr)
+    .sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99'));
+  if (evs.length === 0) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px"><i class="ti ti-calendar-off"></i>No events today</div>';
+    return;
+  }
+  el.innerHTML = evs.map(ev =>
+    `<div class="ov-event-item" onclick="nav('calendar');openCalModal('${ev.id}')">
+       <div class="ov-event-dot" style="background:${ev.color||'#7c6af7'}"></div>
+       <div style="flex:1;min-width:0">
+         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.title}</div>
+         <div style="font-size:11px;color:var(--muted);margin-top:2px">${ev.start_time ? ev.start_time.slice(0,5) : 'All day'}${ev.end_time ? ' – ' + ev.end_time.slice(0,5) : ''}</div>
+       </div>
+       <span style="font-size:10px;padding:2px 6px;border-radius:3px;font-weight:600;background:${CAT_COLORS[ev.category]||CAL_COLORS[0]};color:rgba(255,255,255,0.9);flex-shrink:0">${ev.category}</span>
+     </div>`
+  ).join('');
+  if (_animateNext) animateIn(el, 50);
+}
+
+function updateOverviewCCU() {
+  const el = document.getElementById('_ov-ccu');
+  if (!el) return;
+  const total = gamesData.reduce((s, g) => s + (g.playing || 0), 0);
+  el.textContent = total > 0 ? total.toLocaleString() : '—';
+  if (!prefersReducedMotion() && total > 0) {
+    el.animate(
+      [{ color: '#ffffff', transform: 'scale(1.12)' }, { color: 'var(--green)', transform: 'scale(1)' }],
+      { duration: 480, easing: 'ease-out' }
+    );
+  }
+}
+
 function renderOverview() {
   const totalTodos = state.todos.filter(t=>!t.done).length;
   const doneGoals  = state.goals.filter(g=>Math.round((g.current/g.target)*100)>=100).length;
   const activeProj = state.projects.filter(p=>p.status==='active').length;
   const lastSleep  = state.sleep[0];
+  const totalCCU   = gamesData.reduce((s, g) => s + (g.playing || 0), 0);
   const hero = document.getElementById('overview-hero');
   hero.innerHTML = `
     <div class="stat-card"><div class="stat-label">Open Tasks</div><div class="stat-val stat-amber" id="_ov-tasks">0</div><div class="stat-sub">Pending</div></div>
     <div class="stat-card"><div class="stat-label">Goals</div><div class="stat-val stat-green">${doneGoals}/${state.goals.length}</div><div class="stat-sub">Completed</div></div>
     <div class="stat-card"><div class="stat-label">Projects</div><div class="stat-val stat-teal" id="_ov-proj">0</div><div class="stat-sub">Active</div></div>
-    <div class="stat-card"><div class="stat-label">Last Sleep</div><div class="stat-val stat-accent">${lastSleep?lastSleep.hours+'h':'—'}</div><div class="stat-sub">${lastSleep?lastSleep.date:'No data'}</div></div>`;
+    <div class="stat-card"><div class="stat-label">Last Sleep</div><div class="stat-val stat-accent">${lastSleep?lastSleep.hours+'h':'—'}</div><div class="stat-sub">${lastSleep?lastSleep.date:'No data'}</div></div>
+    <div class="stat-card"><div class="stat-label">Live Players</div><div class="stat-val stat-green" id="_ov-ccu">${totalCCU > 0 ? totalCCU.toLocaleString() : '—'}</div><div class="stat-sub">Across all games</div></div>`;
   const ot = document.getElementById('ov-todos');
   const tt = state.todos.filter(t=>!t.done).slice(0,5);
   ot.innerHTML = tt.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-checkbox"></i>All done!</div>' : tt.map(t=>`<div class="todo-item" data-todo-id="${t.id}"><div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}');renderOverview()"><i class="ti ti-check"></i></div><div class="todo-text">${t.text}</div></div>`).join('');
@@ -1504,6 +1662,7 @@ function renderOverview() {
   const op = document.getElementById('ov-projects');
   const ap = state.projects.filter(p=>p.status==='active').slice(0,3);
   op.innerHTML = ap.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-briefcase"></i>No active projects</div>' : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">${ap.map(p=>`<div style="background:var(--bg3);border-radius:var(--r2);padding:14px"><div style="font-weight:600;font-size:13px;margin-bottom:6px">${p.name}</div><div class="progress-bar" style="margin-bottom:4px"><div class="progress-fill" style="width:${p.progress}%;background:var(--teal)"></div></div><div style="font-size:11px;color:var(--muted)">${p.progress}% complete</div></div>`).join('')}</div>`;
+  renderOverviewEvents();
   if (_animateNext) {
     countUp(document.getElementById('_ov-tasks'), totalTodos);
     countUp(document.getElementById('_ov-proj'),  activeProj);
@@ -1521,7 +1680,7 @@ function render() {
   const active = document.querySelector('.page.active');
   if (!active) return;
   const id = active.id.replace('page-','');
-  if (id==='overview')  renderOverview();
+  if (id==='overview')  { renderOverview(); if (gamesData.length === 0) fetchGames(); }
   if (id==='health')    renderHealth();
   if (id==='sleep')     renderSleep();
   if (id==='goals')     renderGoals();
@@ -1554,7 +1713,9 @@ sb.auth.onAuthStateChange((event, session) => {
     // Auto-refresh game CCU every 60 seconds
     if (!_gamesTimer) {
       _gamesTimer = setInterval(() => {
-        if (document.querySelector('.page.active')?.id === 'page-games') fetchGames(true);
+        const activePage = document.querySelector('.page.active')?.id;
+        if (activePage === 'page-games')    fetchGames(true);   // flash CCU on games page
+        else if (activePage === 'page-overview') fetchGames();  // silent update for overview card
       }, 60000);
     }
   } else {
