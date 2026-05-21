@@ -216,18 +216,40 @@
   .btn-danger { background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.3); color: var(--red); }
   .btn-danger:hover { background: rgba(248,113,113,0.22); border-color: rgba(248,113,113,0.45); }
 
-  /* ── Calendar week view ──────────────────────────────────────────────── */
-  .cal-week-view-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-  .cal-wday { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); display: flex; flex-direction: column; overflow: hidden; transition: border-color var(--dur-sm) var(--ease-out); cursor: pointer; min-height: 520px; }
-  .cal-wday:hover { border-color: var(--border2); }
-  .cal-wday.today { border-color: var(--accent); }
-  .cal-wday-header { padding: 12px 8px 10px; border-bottom: 1px solid var(--border); text-align: center; pointer-events: none; }
-  .cal-wday-name { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
-  .cal-wday-num { font-size: 26px; font-weight: 700; font-family: var(--font-h); margin-top: 4px; color: var(--text); }
-  .cal-wday.today .cal-wday-num { color: var(--accent2); }
-  .cal-wday-events { padding: 8px; flex: 1; overflow-y: auto; }
-  .cal-wday-empty { font-size: 11px; color: var(--muted); text-align: center; padding: 24px 4px; opacity: 0.4; }
-  .cal-chip-time { font-size: 9px; opacity: 0.72; margin-right: 2px; }
+  /* ── Calendar week time-grid ─────────────────────────────────────────── */
+  .cal-week-view-grid { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; background: var(--bg2); }
+  /* Sticky day-name header */
+  .cal-wv-top { display: grid; grid-template-columns: 54px repeat(7,1fr); border-bottom: 2px solid var(--border); background: var(--bg2); position: sticky; top: 0; z-index: 5; }
+  .cal-wv-gutter { border-right: 1px solid var(--border); background: var(--bg2); }
+  .cal-wv-day-header { padding: 12px 0 10px; text-align: center; cursor: pointer; transition: background var(--dur-xs); border-left: 1px solid var(--border); }
+  .cal-wv-day-header:hover { background: var(--bg3); }
+  .cal-wv-day-header.today { background: rgba(124,106,247,0.08); }
+  .cal-wv-day-name { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+  .cal-wv-day-num  { font-size: 24px; font-weight: 700; font-family: var(--font-h); margin-top: 4px; color: var(--text); }
+  .cal-wv-day-header.today .cal-wv-day-num { color: var(--accent2); }
+  /* All-day event row */
+  .cal-wv-allday-row { display: grid; grid-template-columns: 54px repeat(7,1fr); border-bottom: 1px solid var(--border); min-height: 28px; }
+  .cal-wv-allday-label { font-size: 9px; color: var(--muted); text-align: right; padding: 6px 6px 0 0; line-height: 1; }
+  .cal-wv-allday-col { padding: 3px 4px; border-left: 1px solid var(--border); }
+  .cal-wv-allday-col.today { background: rgba(124,106,247,0.04); }
+  /* Scrollable body */
+  .cal-wv-scroll { display: flex; overflow-y: auto; max-height: 72vh; }
+  .cal-wv-time-axis { width: 54px; flex-shrink: 0; border-right: 1px solid var(--border); background: var(--bg2); position: sticky; left: 0; z-index: 2; }
+  .cal-wv-hour-label { font-size: 9px; color: var(--muted); text-align: right; padding-right: 7px; display: flex; align-items: flex-start; justify-content: flex-end; transform: translateY(-7px); }
+  .cal-wv-days { display: grid; grid-template-columns: repeat(7,1fr); flex: 1; }
+  /* Day columns */
+  .cal-wv-day-col { position: relative; border-left: 1px solid var(--border); }
+  .cal-wv-day-col.today { background: rgba(124,106,247,0.03); }
+  .cal-wv-hour-line { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); pointer-events: none; }
+  .cal-wv-half-line { position: absolute; left: 0; right: 0; height: 1px; background: rgba(255,255,255,0.025); pointer-events: none; }
+  /* Current time indicator */
+  .cal-now-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--red); z-index: 3; pointer-events: none; }
+  .cal-now-dot  { position: absolute; left: -4px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--red); }
+  /* Timed event blocks */
+  .cal-timed-event { position: absolute; border-radius: 4px; padding: 3px 6px; overflow: hidden; cursor: pointer; transition: filter var(--dur-xs), box-shadow var(--dur-xs); z-index: 1; box-sizing: border-box; }
+  .cal-timed-event:hover { filter: brightness(1.2); box-shadow: 0 3px 14px rgba(0,0,0,0.45); z-index: 4; }
+  .cal-te-time  { font-size: 9px; color: rgba(255,255,255,0.82); white-space: nowrap; overflow: hidden; line-height: 1.35; margin-bottom: 1px; }
+  .cal-te-title { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.96); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
   /* ── Overview today's events ─────────────────────────────────────────── */
   .ov-event-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: opacity var(--dur-xs); }
   .ov-event-item:last-child { border-bottom: none; }
@@ -1360,6 +1382,21 @@ function renderCalMonth() {
   if (_animateNext) animateIn(grid, 6);
 }
 
+// px per hour in the week time-grid (1 min = WEEK_HOUR_PX/60 px)
+const WEEK_HOUR_PX = 64;
+
+// Click an empty slot in the week grid → open modal pre-filled with that time
+function handleDayColClick(e, dateStr) {
+  if (e.target.closest('.cal-timed-event')) return; // let event clicks bubble to their own handler
+  const rect      = e.currentTarget.getBoundingClientRect();
+  const rawMins   = Math.round((e.clientY - rect.top) / WEEK_HOUR_PX * 60 / 15) * 15;
+  const startMins = Math.min(23 * 60, rawMins);
+  const endMins   = Math.min(23 * 60 + 30, startMins + 60);
+  openCalModal(null, dateStr);
+  document.getElementById('cal-start').value = `${pad2(Math.floor(startMins/60))}:${pad2(startMins%60)}`;
+  document.getElementById('cal-end').value   = `${pad2(Math.floor(endMins/60))}:${pad2(endMins%60)}`;
+}
+
 function renderCalWeek() {
   const monthHeader = document.getElementById('cal-month-header');
   if (monthHeader) monthHeader.style.display = 'none';
@@ -1367,48 +1404,152 @@ function renderCalWeek() {
   if (!grid) return;
   grid.className = 'cal-week-view-grid';
 
-  // Label: "May 19 – May 25, 2026"
+  // Week range label
   const ws  = calWeekStart;
   const we  = new Date(ws); we.setDate(ws.getDate() + 6);
   const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const label = document.getElementById('cal-month-label');
   if (label) label.textContent = `${fmt(ws)} – ${fmt(we)}, ${we.getFullYear()}`;
 
+  const now       = new Date();
   const todayStr  = new Date().toISOString().split('T')[0];
   const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  let html = '';
+  const HP        = WEEK_HOUR_PX;
 
-  for (let i = 0; i < 7; i++) {
-    const d       = new Date(ws);
+  // Build per-day data
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(ws);
     d.setDate(ws.getDate() + i);
     const dateStr = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    const isToday = dateStr === todayStr;
-    const evs     = getEventsForDate(dateStr)
-                      .sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99'));
-    const chips   = evs.map(ev =>
-      `<div class="cal-chip" style="background:${ev.color||'#7c6af7'};margin-bottom:6px;white-space:normal;line-height:1.5;padding:5px 7px;font-size:11px"
-            onclick="event.stopPropagation();openCalModal('${ev.id}')"
-            title="${ev.title.replace(/"/g,'&quot;')}">
-         ${ev.start_time ? `<div class="cal-chip-time" style="font-size:10px;opacity:0.75;margin-bottom:1px">${ev.start_time.slice(0,5)}${ev.end_time ? ' – '+ev.end_time.slice(0,5) : ''}</div>` : ''}
-         <div style="font-weight:700">${ev.title}</div>
-         ${ev.notes ? `<div style="font-size:10px;opacity:0.65;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.notes}</div>` : ''}
-       </div>`
-    ).join('');
+    const all     = getEventsForDate(dateStr);
+    return { d, dateStr, isToday: dateStr === todayStr,
+             timed: all.filter(ev => ev.start_time),
+             allDay: all.filter(ev => !ev.start_time),
+             name: DAY_NAMES[d.getDay()] };
+  });
 
-    html += `<div class="cal-wday${isToday ? ' today' : ''}" onclick="openCalModal(null,'${dateStr}')">
-      <div class="cal-wday-header">
-        <div class="cal-wday-name">${DAY_NAMES[d.getDay()]}</div>
-        <div class="cal-wday-num">${d.getDate()}</div>
-      </div>
-      <div class="cal-wday-events" onclick="event.stopPropagation();openCalModal(null,'${dateStr}')">
-        ${chips || '<div class="cal-wday-empty">No events</div>'}
-      </div>
-    </div>`;
+  // Overlap layout: assign column slots so overlapping events sit side-by-side
+  function layoutTimed(events) {
+    const items = events.map(ev => {
+      const [sh, sm] = ev.start_time.split(':').map(Number);
+      let endMins = sh * 60 + sm + 60; // default 1 hr
+      if (ev.end_time) {
+        const [eh, em] = ev.end_time.split(':').map(Number);
+        endMins = Math.max(sh * 60 + sm + 15, eh * 60 + em);
+      }
+      return { ev, startMins: sh * 60 + sm, endMins, _col: 0, _numCols: 1 };
+    }).sort((a, b) => a.startMins - b.startMins);
+
+    const colEnds = [];
+    for (const item of items) {
+      let placed = false;
+      for (let c = 0; c < colEnds.length; c++) {
+        if (colEnds[c] <= item.startMins) { item._col = c; colEnds[c] = item.endMins; placed = true; break; }
+      }
+      if (!placed) { item._col = colEnds.length; colEnds.push(item.endMins); }
+    }
+    for (const item of items) {
+      let maxCol = 0;
+      for (const o of items) {
+        if (o.startMins < item.endMins && o.endMins > item.startMins) maxCol = Math.max(maxCol, o._col);
+      }
+      item._numCols = maxCol + 1;
+    }
+    return items;
   }
 
-  grid.innerHTML = html;
+  // Hour guide lines (full + half)
+  const hourLines = Array.from({ length: 24 }, (_, h) =>
+    `<div class="cal-wv-hour-line" style="top:${h * HP}px"></div>` +
+    `<div class="cal-wv-half-line"  style="top:${h * HP + HP / 2}px"></div>`
+  ).join('');
+
+  // Time axis labels
+  const hourLabels = Array.from({ length: 24 }, (_, h) => {
+    const lbl = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+    return `<div class="cal-wv-hour-label" style="height:${HP}px">${lbl}</div>`;
+  }).join('');
+
+  // Day header row
+  const headerHtml = days.map(day =>
+    `<div class="cal-wv-day-header${day.isToday ? ' today' : ''}" onclick="openCalModal(null,'${day.dateStr}')">
+       <div class="cal-wv-day-name">${day.name}</div>
+       <div class="cal-wv-day-num">${day.d.getDate()}</div>
+     </div>`
+  ).join('');
+
+  // All-day row (only when there are all-day events)
+  const hasAllDay  = days.some(d => d.allDay.length > 0);
+  const allDayHtml = hasAllDay ? `
+    <div class="cal-wv-allday-row">
+      <div class="cal-wv-gutter"><span class="cal-wv-allday-label">All day</span></div>
+      ${days.map(day => `
+        <div class="cal-wv-allday-col${day.isToday ? ' today' : ''}">
+          ${day.allDay.map(ev =>
+            `<div class="cal-chip" style="background:${ev.color||'#7c6af7'};margin-bottom:2px"
+                  onclick="event.stopPropagation();openCalModal('${ev.id}')">${ev.title}</div>`
+          ).join('')}
+        </div>`).join('')}
+    </div>` : '';
+
+  // Current time indicator position
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const nowTop  = (nowMins / 60) * HP;
+
+  // Day columns with absolutely-positioned event blocks
+  const dayColsHtml = days.map(day => {
+    const laid   = layoutTimed(day.timed);
+    const evHtml = laid.map(({ ev, startMins, endMins, _col, _numCols }) => {
+      const top    = (startMins / 60) * HP;
+      const height = Math.max(((endMins - startMins) / 60) * HP, 20);
+      const left   = `${(_col / _numCols) * 100}%`;
+      const width  = `calc(${(1 / _numCols) * 100}% - 3px)`;
+      const timeStr = ev.start_time.slice(0, 5) + (ev.end_time ? ' – ' + ev.end_time.slice(0, 5) : '');
+      return `<div class="cal-timed-event"
+                   style="top:${top.toFixed(1)}px;height:${height.toFixed(1)}px;left:${left};width:${width};background:${ev.color||'#7c6af7'}"
+                   onclick="event.stopPropagation();openCalModal('${ev.id}')">
+        ${height >= 18 ? `<div class="cal-te-time">${timeStr}</div>` : ''}
+        ${height >= 28 ? `<div class="cal-te-title">${ev.title}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    const nowLine = day.isToday
+      ? `<div class="cal-now-line" style="top:${nowTop.toFixed(1)}px"><div class="cal-now-dot"></div></div>`
+      : '';
+
+    return `<div class="cal-wv-day-col${day.isToday ? ' today' : ''}"
+                 style="height:${24 * HP}px"
+                 onclick="handleDayColClick(event,'${day.dateStr}')">
+      ${hourLines}${nowLine}${evHtml}
+    </div>`;
+  }).join('');
+
+  grid.innerHTML = `
+    <div class="cal-wv-top">
+      <div class="cal-wv-gutter"></div>${headerHtml}
+    </div>
+    ${allDayHtml}
+    <div class="cal-wv-scroll">
+      <div class="cal-wv-time-axis">${hourLabels}</div>
+      <div class="cal-wv-days">${dayColsHtml}</div>
+    </div>`;
+
+  // Auto-scroll: show current time (or 8 AM for other weeks)
+  requestAnimationFrame(() => {
+    const scroll = grid.querySelector('.cal-wv-scroll');
+    if (!scroll) return;
+    const isCurrentWeek = days.some(d => d.isToday);
+    const scrollMins    = isCurrentWeek ? Math.max(0, nowMins - 60) : 8 * 60;
+    scroll.scrollTop    = (scrollMins / 60) * HP;
+  });
+
   renderCalAnalytics();
-  if (_animateNext) animateIn(grid, 40);
+  // Fade columns in on navigation
+  if (_animateNext && !prefersReducedMotion()) {
+    grid.querySelectorAll('.cal-wv-day-col').forEach((col, i) =>
+      col.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, delay: i * 25, fill: 'both' })
+    );
+  }
 }
 
 function renderCalAnalytics() {
