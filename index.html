@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -31,11 +31,23 @@
     --red: #f87171;
     --teal: #34d399;
     --pink: #f472b6;
-    --font-h: 'Syne', sans-serif;
-    --font-b: 'DM Sans', sans-serif;
+    --font-h: 'Montserrat', sans-serif;
+    --font-b: 'Montserrat', sans-serif;
     --r: 12px;
     --r2: 8px;
+    /* Animation timing — change these to tune the whole dashboard */
+    --dur-xs:  80ms;
+    --dur-sm: 160ms;
+    --dur-md: 280ms;
+    --dur-lg: 500ms;
+    --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+  /* ── Keyframes ─────────────────────────────────────────────────────── */
+  @keyframes pageIn   { from { opacity:0; transform:translateY(18px) } to { opacity:1; transform:none } }
+  @keyframes shimmer  { from { background-position:-200% 0 } to { background-position:200% 0 } }
+  @keyframes checkPop { 0%{transform:scale(0.5)} 55%{transform:scale(1.3)} 100%{transform:scale(1)} }
+
   body { background: var(--bg); color: var(--text); font-family: var(--font-b); font-size: 14px; min-height: 100vh; }
   .app { display: flex; height: 100vh; overflow: hidden; }
 
@@ -44,7 +56,9 @@
   .logo span { color: var(--accent2); }
   .nav-section { padding: 0 12px; margin-bottom: 8px; }
   .nav-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 0 8px; margin-bottom: 6px; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--r2); cursor: pointer; color: var(--muted); font-size: 13.5px; transition: all 0.15s; margin-bottom: 2px; user-select: none; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--r2); cursor: pointer; color: var(--muted); font-size: 13.5px; transition: background var(--dur-md) var(--ease-out), color var(--dur-md) var(--ease-out); margin-bottom: 2px; user-select: none; position: relative; overflow: hidden; }
+  .nav-item::before { content: ''; position: absolute; left: 0; top: 20%; height: 60%; width: 3px; background: var(--accent2); border-radius: 0 3px 3px 0; transform: scaleY(0); transform-origin: center; transition: transform var(--dur-md) var(--ease-spring); }
+  .nav-item.active::before { transform: scaleY(1); }
   .nav-item:hover { background: var(--bg3); color: var(--text); }
   .nav-item.active { background: rgba(124,106,247,0.15); color: var(--accent2); }
   .nav-item i { font-size: 17px; }
@@ -53,14 +67,16 @@
 
   .main { flex: 1; overflow-y: auto; padding: 28px 32px; }
   .page { display: none; }
-  .page.active { display: block; }
+  .page.active { display: block; animation: pageIn var(--dur-md) var(--ease-out) both; }
   .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
   .page-title { font-family: var(--font-h); font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--r2); border: 1px solid var(--border2); background: var(--bg3); color: var(--text); font-family: var(--font-b); font-size: 13px; cursor: pointer; transition: all 0.15s; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--r2); border: 1px solid var(--border2); background: var(--bg3); color: var(--text); font-family: var(--font-b); font-size: 13px; cursor: pointer; transition: background var(--dur-sm) var(--ease-out), border-color var(--dur-sm) var(--ease-out), box-shadow var(--dur-sm) var(--ease-out), transform var(--dur-xs) var(--ease-out); }
   .btn:hover { background: var(--bg4); border-color: rgba(255,255,255,0.2); }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn:active { transform: scale(0.95); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
-  .btn-primary:hover { background: #6b59e8; border-color: #6b59e8; }
+  .btn-primary:hover { background: #6b59e8; border-color: #6b59e8; box-shadow: 0 0 22px rgba(124,106,247,0.4); }
+  .btn-primary:active { transform: scale(0.95); box-shadow: none; }
   .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); font-size: 12px; padding: 6px 8px; }
   .btn-ghost:hover { background: var(--bg3); color: var(--text); border-color: transparent; }
 
@@ -84,7 +100,7 @@
   .progress-wrap { margin-bottom: 14px; }
   .progress-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
   .progress-bar { height: 6px; background: var(--bg4); border-radius: 100px; overflow: hidden; }
-  .progress-fill { height: 100%; border-radius: 100px; transition: width 0.4s ease; }
+  .progress-fill { height: 100%; border-radius: 100px; }
 
   input, textarea, select { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r2); color: var(--text); font-family: var(--font-b); font-size: 13px; padding: 9px 12px; width: 100%; transition: border 0.15s; outline: none; }
   input:focus, textarea:focus, select:focus { border-color: var(--accent); }
@@ -95,8 +111,9 @@
 
   .todo-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
   .todo-item:last-child { border-bottom: none; }
-  .todo-check { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border2); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; transition: all 0.15s; }
+  .todo-check { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border2); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; transition: background var(--dur-md) var(--ease-out), border-color var(--dur-md) var(--ease-out); }
   .todo-check.done { background: var(--accent); border-color: var(--accent); }
+  .todo-check.just-checked { animation: checkPop var(--dur-md) var(--ease-spring) both; }
   .todo-check i { font-size: 11px; color: white; display: none; }
   .todo-check.done i { display: block; }
   .todo-text { flex: 1; font-size: 13.5px; }
@@ -174,6 +191,14 @@
   .game-meta { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
   .game-meta span { display: flex; align-items: center; gap: 4px; }
 
+  /* ── Skeleton loading ──────────────────────────────────────────────── */
+  .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; border-radius: var(--r2); }
+  .skeleton-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .sk-line { border-radius: 4px; }
+  .sk-tall  { height: 30px; width: 55%; }
+  .sk-short { height: 11px; width: 38%; }
+  .sk-full  { height: 11px; width: 100%; }
+
   @media (max-width: 768px) {
     .sidebar { width: 56px; min-width: 56px; }
     .nav-item span, .nav-label, .sidebar-footer { display: none; }
@@ -181,6 +206,14 @@
     .grid-4, .overview-hero { grid-template-columns: repeat(2,1fr); }
     .grid-3 { grid-template-columns: 1fr 1fr; }
     .grid-2 { grid-template-columns: 1fr; }
+  }
+  /* ── Reduced motion ─────────────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 </style>
 </head>
@@ -568,12 +601,66 @@ const _debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = s
 const _dbGoal = _debounce((id, val) => sb.from('goals').update({ current: parseFloat(val) || 0 }).eq('id', id), 600);
 const _dbProj = _debounce((id, val) => sb.from('projects').update({ progress: parseInt(val) || 0 }).eq('id', id), 600);
 
+// === ANIMATION HELPERS ===
+let _animateNext = false; // set true in nav() and initial load; cleared by render()
+const prefersReducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Stagger-fade children of a container into view
+function animateIn(container, stagger = 60) {
+  if (!container || prefersReducedMotion()) return;
+  [...container.children].forEach((el, i) => {
+    el.animate(
+      [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'translateY(0)' }],
+      { duration: 300, delay: i * stagger, fill: 'both', easing: 'cubic-bezier(0.22,1,0.36,1)' }
+    );
+  });
+}
+
+// Animate all .progress-fill widths from 0 to their target
+function animateProgressBars(container) {
+  if (!container || prefersReducedMotion()) return;
+  container.querySelectorAll('.progress-fill').forEach((bar, i) => {
+    const target = bar.style.width || '0%';
+    bar.style.width = '0%';
+    bar.animate(
+      [{ width: '0%' }, { width: target }],
+      { duration: 700, delay: 80 + i * 50, fill: 'forwards', easing: 'cubic-bezier(0.22,1,0.36,1)' }
+    );
+  });
+}
+
+// Count-up a numeric element from 0 to `to`
+function countUp(el, to, fmt = n => n) {
+  if (!el) return;
+  if (prefersReducedMotion()) { el.textContent = fmt(to); return; }
+  const dur = 650, start = performance.now();
+  const tick = now => {
+    const p = Math.min(1, (now - start) / dur);
+    const e = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    el.textContent = fmt(Math.round(to * e));
+    if (p < 1) requestAnimationFrame(tick);
+    else el.textContent = fmt(to); // snap exact at end
+  };
+  requestAnimationFrame(tick);
+}
+
+// Shimmer skeleton cards shown while Supabase data loads
+function showSkeletons() {
+  const skCard = () => `<div class="skeleton-card"><div class="skeleton sk-line sk-tall"></div><div class="skeleton sk-line sk-short"></div></div>`;
+  const set = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
+  set('overview-hero', Array(4).fill(0).map(skCard).join(''));
+  set('ov-todos',    `<div style="display:flex;flex-direction:column;gap:10px">${Array(4).fill(`<div class="skeleton" style="height:34px;border-radius:8px"></div>`).join('')}</div>`);
+  set('ov-goals',   `<div style="display:flex;flex-direction:column;gap:12px">${Array(3).fill(`<div class="skeleton" style="height:26px;border-radius:8px"></div>`).join('')}</div>`);
+  set('ov-projects',`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">${Array(2).fill(0).map(skCard).join('')}</div>`);
+}
+
 // === NAVIGATION ===
 function nav(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => { if (n.getAttribute('onclick') === `nav('${page}')`) n.classList.add('active'); });
+  _animateNext = true;
   render();
 }
 
@@ -586,8 +673,32 @@ function setDate() {
   if (greeting) greeting.textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + ' ✦';
 }
 
-function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function openModal(id) {
+  const overlay = document.getElementById(id);
+  const modal   = overlay.querySelector('.modal');
+  overlay.style.display = 'flex';
+  if (!prefersReducedMotion()) {
+    overlay.animate([{ opacity: 0 }, { opacity: 1 }],
+      { duration: 200, fill: 'forwards' });
+    modal.animate(
+      [{ opacity: 0, transform: 'scale(0.93) translateY(10px)' },
+       { opacity: 1, transform: 'scale(1)   translateY(0)' }],
+      { duration: 280, easing: 'cubic-bezier(0.22,1,0.36,1)', fill: 'forwards' }
+    );
+  }
+}
+function closeModal(id) {
+  const overlay = document.getElementById(id);
+  const modal   = overlay.querySelector('.modal');
+  if (prefersReducedMotion()) { overlay.style.display = 'none'; return; }
+  overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: 'forwards' });
+  const a = modal.animate(
+    [{ opacity: 1, transform: 'scale(1)    translateY(0)' },
+     { opacity: 0, transform: 'scale(0.93) translateY(8px)' }],
+    { duration: 180, easing: 'ease-in', fill: 'forwards' }
+  );
+  a.onfinish = () => { overlay.style.display = 'none'; };
+}
 function closeIfBg(e, id) { if (e.target.classList.contains('modal-overlay')) closeModal(id); }
 function pickColor(el, c) {
   document.querySelectorAll('[onclick^="pickColor"]').forEach(p => p.style.border = 'none');
@@ -623,11 +734,13 @@ async function saveHealth() {
 function renderHealth() {
   const r = state.health[0] || {};
   const avg7 = k => { const s = state.health.slice(0,7); return s.length ? Math.round(s.reduce((a,b) => a+(b[k]||0),0)/s.length) : 0; };
-  document.getElementById('health-stats').innerHTML = `
+  const hs = document.getElementById('health-stats');
+  hs.innerHTML = `
     <div class="stat-card"><div class="stat-label">Steps Today</div><div class="stat-val stat-green">${(r.steps||0).toLocaleString()}</div><div class="stat-sub">Goal: 10,000</div></div>
     <div class="stat-card"><div class="stat-label">Water Today</div><div class="stat-val stat-teal">${((r.water||0)/10).toFixed(1)}L 💧</div><div class="stat-sub">Goal: 2.0L</div></div>
     <div class="stat-card"><div class="stat-label">Weight</div><div class="stat-val stat-accent">${r.weight||'—'} <span style="font-size:14px">kg</span></div><div class="stat-sub">Latest entry</div></div>
     <div class="stat-card"><div class="stat-label">Avg Mood</div><div class="stat-val stat-pink">${avg7('mood')}/10</div><div class="stat-sub">Last 7 days</div></div>`;
+  if (_animateNext) animateIn(hs);
   const sd = state.health.slice(0,7).reverse();
   const mx = Math.max(...sd.map(d=>d.steps||0),1);
   document.getElementById('steps-chart').innerHTML = sd.length === 0 ? '<div class="empty-state"><i class="ti ti-chart-bar"></i>No data yet</div>' :
@@ -664,11 +777,13 @@ function renderSleep() {
   const r = state.sleep[0] || {};
   const avg7h = state.sleep.slice(0,7).length ? (state.sleep.slice(0,7).reduce((a,b)=>a+(b.hours||0),0)/Math.min(state.sleep.length,7)).toFixed(1) : '—';
   const avgQ = state.sleep.slice(0,7).length ? Math.round(state.sleep.slice(0,7).reduce((a,b)=>a+(b.quality||0),0)/Math.min(state.sleep.length,7)) : '—';
-  document.getElementById('sleep-stats').innerHTML = `
+  const ss = document.getElementById('sleep-stats');
+  ss.innerHTML = `
     <div class="stat-card"><div class="stat-label">Last Night</div><div class="stat-val stat-accent">${r.hours||'—'} <span style="font-size:14px">hrs</span></div><div class="stat-sub">${r.date||'No data'}</div></div>
     <div class="stat-card"><div class="stat-label">Avg Hours</div><div class="stat-val stat-teal">${avg7h}</div><div class="stat-sub">Last 7 days</div></div>
     <div class="stat-card"><div class="stat-label">Avg Quality</div><div class="stat-val stat-green">${avgQ}/5</div><div class="stat-sub">Last 7 days</div></div>
     <div class="stat-card"><div class="stat-label">Bedtime</div><div class="stat-val" style="font-size:20px">${r.bed||'—'}</div><div class="stat-sub">Last entry</div></div>`;
+  if (_animateNext) animateIn(ss);
   const s7 = state.sleep.slice(0,7).reverse();
   document.getElementById('sleep-bars').innerHTML = s7.length === 0 ? '<div class="empty-state"><i class="ti ti-moon"></i>No data yet</div>' :
     s7.map(d=>`<div class="sleep-bar"><div class="sleep-day">${d.date.slice(5)}</div><div class="sleep-track"><div class="sleep-fill" style="width:${Math.min(100,Math.round((d.hours/10)*100))}%;background:${d.hours>=7?'var(--teal)':d.hours>=5?'var(--amber)':'var(--red)'}"></div></div><div class="sleep-val">${d.hours}h</div></div>`).join('');
@@ -727,6 +842,7 @@ function renderGoals() {
     const col = catColors[g.cat]||'var(--accent2)';
     return `<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div><span style="font-size:11px;color:${col};font-weight:600;text-transform:uppercase;letter-spacing:0.8px">${g.cat}</span><div style="font-family:var(--font-h);font-size:15px;font-weight:600;margin-top:2px">${g.title}</div></div><div style="display:flex;align-items:center;gap:8px">${g.deadline?`<span style="font-size:11px;color:var(--muted)">📅 ${g.deadline}</span>`:''}<button class="btn" style="padding:4px 8px;font-size:12px" onclick="deleteGoal('${g.id}')"><i class="ti ti-trash"></i></button></div></div><div class="progress-head"><span style="font-size:12px;color:var(--muted)">${g.current} / ${g.target} ${g.unit}</span><span style="font-size:13px;font-weight:600;color:${col}">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div><div style="margin-top:12px;display:flex;align-items:center;gap:8px"><label style="margin:0;font-size:12px;color:var(--muted);white-space:nowrap">Update:</label><input type="number" value="${g.current}" style="max-width:100px" oninput="updateGoal('${g.id}',this.value)"><span style="font-size:12px;color:var(--muted)">${g.unit}</span></div></div>`;
   }).join('');
+  if (_animateNext) { animateIn(el); animateProgressBars(el); }
 }
 
 // === TODOS ===
@@ -759,10 +875,26 @@ async function toggleTodo(id) {
   const t = state.todos.find(t => t.id === id);
   if (!t) return;
   t.done = !t.done;
+  // Animate the checkbox before the DOM is replaced by renderTodos
+  const chk = document.querySelector(`[data-todo-id="${id}"] .todo-check`);
+  if (chk && !prefersReducedMotion()) {
+    await chk.animate(
+      [{ transform:'scale(0.6)' }, { transform:'scale(1.35)' }, { transform:'scale(1)' }],
+      { duration: 280, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'forwards' }
+    ).finished;
+  }
   renderTodos();
   await sb.from('todos').update({ done: t.done }).eq('id', id);
 }
 async function deleteTodo(id) {
+  const el = document.querySelector(`[data-todo-id="${id}"]`);
+  if (el && !prefersReducedMotion()) {
+    await el.animate(
+      [{ opacity: 1, transform: 'translateX(0)',  maxHeight: '80px',  paddingTop: '10px', paddingBottom: '10px' },
+       { opacity: 0, transform: 'translateX(28px)', maxHeight: '0px', paddingTop: '0',    paddingBottom: '0'    }],
+      { duration: 220, easing: 'ease-in', fill: 'forwards' }
+    ).finished;
+  }
   state.todos = state.todos.filter(t => t.id !== id);
   renderTodos();
   await sb.from('todos').delete().eq('id', id);
@@ -775,7 +907,7 @@ function filterTodos(f) {
 function renderTodoItem(t) {
   const pc = {high:'p-high',med:'p-med',low:'p-low'}[t.priority]||'p-low';
   const pl = {high:'High',med:'Med',low:'Low'}[t.priority]||'Low';
-  return `<div class="todo-item"><div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}')"><i class="ti ti-check"></i></div><div style="flex:1"><div class="todo-text ${t.done?'done':''}">${t.text}</div><div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap"><span class="todo-priority ${pc}">${pl}</span>${t.due?`<span style="font-size:11px;color:var(--muted)">📅 ${t.due}</span>`:''}${t.project?`<span style="font-size:11px;color:var(--muted)">📁 ${t.project}</span>`:''}</div></div><i class="ti ti-x todo-del" onclick="deleteTodo('${t.id}')"></i></div>`;
+  return `<div class="todo-item" data-todo-id="${t.id}"><div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}')"><i class="ti ti-check"></i></div><div style="flex:1"><div class="todo-text ${t.done?'done':''}">${t.text}</div><div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap"><span class="todo-priority ${pc}">${pl}</span>${t.due?`<span style="font-size:11px;color:var(--muted)">📅 ${t.due}</span>`:''}${t.project?`<span style="font-size:11px;color:var(--muted)">📁 ${t.project}</span>`:''}</div></div><i class="ti ti-x todo-del" onclick="deleteTodo('${t.id}')"></i></div>`;
 }
 function renderTodos() {
   let open = state.todos.filter(t=>!t.done);
@@ -783,8 +915,8 @@ function renderTodos() {
   if (todoFilter !== 'all') open = open.filter(t=>t.priority===todoFilter);
   const oe = document.getElementById('todos-open');
   const de = document.getElementById('todos-done');
-  if (oe) oe.innerHTML = open.length===0 ? '<div class="empty-state"><i class="ti ti-checkbox"></i>All clear!</div>' : open.sort((a,b)=>({high:0,med:1,low:2}[a.priority]-{high:0,med:1,low:2}[b.priority])).map(renderTodoItem).join('');
-  if (de) de.innerHTML = done.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-check"></i>Nothing done yet</div>' : done.map(renderTodoItem).join('');
+  if (oe) { oe.innerHTML = open.length===0 ? '<div class="empty-state"><i class="ti ti-checkbox"></i>All clear!</div>' : open.sort((a,b)=>({high:0,med:1,low:2}[a.priority]-{high:0,med:1,low:2}[b.priority])).map(renderTodoItem).join(''); if (_animateNext) animateIn(oe, 40); }
+  if (de) { de.innerHTML = done.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-check"></i>Nothing done yet</div>' : done.map(renderTodoItem).join(''); }
 }
 
 // === PROJECTS ===
@@ -835,6 +967,7 @@ function renderProjects() {
     const col = {active:'var(--teal)',paused:'var(--amber)',done:'var(--accent2)'}[p.status]||'var(--teal)';
     return `<div class="project-card"><div class="project-head"><div class="project-name">${p.name}</div><div style="display:flex;gap:6px;align-items:center"><span class="project-status ${sc}">${p.status}</span><button class="btn" style="padding:4px 8px" onclick="deleteProject('${p.id}')"><i class="ti ti-trash"></i></button></div></div>${p.desc?`<div class="project-desc">${p.desc}</div>`:''}<div class="progress-head"><span style="font-size:12px;color:var(--muted)">Progress</span><span style="font-size:13px;font-weight:600;color:${col}">${p.progress}%</span></div><div class="progress-bar" style="margin-bottom:12px"><div class="progress-fill" style="width:${p.progress}%;background:${col}"></div></div><input type="range" min="0" max="100" value="${p.progress}" step="1" style="margin-bottom:12px" oninput="this.previousElementSibling.previousElementSibling.children[1].textContent=this.value+'%';this.previousElementSibling.children[0].style.width=this.value+'%';updateProjectProgress('${p.id}',this.value)">${p.tags.length?`<div>${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>`:''}<div class="project-meta" style="margin-top:10px">${p.start?`<span><i class="ti ti-calendar"></i>${p.start}</span>`:''}${p.end?`<span><i class="ti ti-flag"></i>${p.end}</span>`:''}</div></div>`;
   }).join('');
+  if (_animateNext) { animateIn(el); animateProgressBars(el); }
 }
 
 // === NOTES ===
@@ -871,6 +1004,7 @@ function renderNotes() {
   if (!el) return;
   if (state.notes.length===0) { el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-notes"></i><div>No notes yet</div></div>'; return; }
   el.innerHTML = state.notes.map(n=>`<div style="background:${n.color||'var(--bg2)'};border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative"><button class="btn" style="position:absolute;top:10px;right:10px;padding:3px 6px;opacity:0.5" onclick="deleteNote('${n.id}')"><i class="ti ti-x" style="font-size:13px"></i></button><div style="font-family:var(--font-h);font-size:14px;font-weight:600;margin-bottom:8px;padding-right:30px">${n.title}</div><div style="font-size:13px;color:var(--muted);white-space:pre-wrap;line-height:1.6">${n.body}</div><div style="font-size:11px;color:var(--muted);margin-top:12px;opacity:0.6">${n.created}</div></div>`).join('');
+  if (_animateNext) animateIn(el);
 }
 
 // === MY GAMES ===
@@ -878,7 +1012,9 @@ const GAME_UNIVERSE_IDS = [9937907976, 8334477247, 9482790279, 9550364666];
 let gamesData = [];
 let _gamesTimer = null;
 
-async function fetchGames() {
+let _gamesIsRefresh = false;
+async function fetchGames(isRefresh = false) {
+  _gamesIsRefresh = isRefresh;
   const ids = GAME_UNIVERSE_IDS.join(',');
   const proxy = url => `https://corsproxy.io/?${url}`;
   try {
@@ -902,7 +1038,7 @@ async function fetchGames() {
 
     const el = document.getElementById('games-last-updated');
     if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    renderGames();
+    renderGames(_gamesIsRefresh);
   } catch (err) {
     console.error('Games fetch failed:', err);
     const grid = document.getElementById('games-grid');
@@ -910,7 +1046,7 @@ async function fetchGames() {
   }
 }
 
-function renderGames() {
+function renderGames(flash = false) {
   const totalCCU   = gamesData.reduce((s, g) => s + (g.playing || 0), 0);
   const totalVisits = gamesData.reduce((s, g) => s + (g.visits  || 0), 0);
   const avgRating  = gamesData.length
@@ -956,41 +1092,69 @@ function renderGames() {
       </div>
     </div>`;
   }).join('');
+
+  // Stagger game cards on first load; flash CCU numbers on auto-refresh
+  animateIn(document.getElementById('games-stats'));
+  animateIn(grid);
+  if (flash && !prefersReducedMotion()) {
+    setTimeout(() => {
+      document.querySelectorAll('.game-ccu').forEach(el => {
+        el.animate(
+          [{ color: '#ffffff', transform: 'scale(1.08)' },
+           { color: 'var(--green)', transform: 'scale(1)' }],
+          { duration: 480, easing: 'ease-out' }
+        );
+      });
+    }, 80); // let new DOM paint first
+  }
 }
 
 // === OVERVIEW ===
 function renderOverview() {
   const totalTodos = state.todos.filter(t=>!t.done).length;
-  const doneGoals = state.goals.filter(g=>Math.round((g.current/g.target)*100)>=100).length;
+  const doneGoals  = state.goals.filter(g=>Math.round((g.current/g.target)*100)>=100).length;
   const activeProj = state.projects.filter(p=>p.status==='active').length;
-  const lastSleep = state.sleep[0];
-  document.getElementById('overview-hero').innerHTML = `
-    <div class="stat-card"><div class="stat-label">Open Tasks</div><div class="stat-val stat-amber">${totalTodos}</div><div class="stat-sub">Pending</div></div>
+  const lastSleep  = state.sleep[0];
+  const hero = document.getElementById('overview-hero');
+  hero.innerHTML = `
+    <div class="stat-card"><div class="stat-label">Open Tasks</div><div class="stat-val stat-amber" id="_ov-tasks">0</div><div class="stat-sub">Pending</div></div>
     <div class="stat-card"><div class="stat-label">Goals</div><div class="stat-val stat-green">${doneGoals}/${state.goals.length}</div><div class="stat-sub">Completed</div></div>
-    <div class="stat-card"><div class="stat-label">Projects</div><div class="stat-val stat-teal">${activeProj}</div><div class="stat-sub">Active</div></div>
+    <div class="stat-card"><div class="stat-label">Projects</div><div class="stat-val stat-teal" id="_ov-proj">0</div><div class="stat-sub">Active</div></div>
     <div class="stat-card"><div class="stat-label">Last Sleep</div><div class="stat-val stat-accent">${lastSleep?lastSleep.hours+'h':'—'}</div><div class="stat-sub">${lastSleep?lastSleep.date:'No data'}</div></div>`;
   const ot = document.getElementById('ov-todos');
   const tt = state.todos.filter(t=>!t.done).slice(0,5);
-  ot.innerHTML = tt.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-checkbox"></i>All done!</div>' : tt.map(t=>`<div class="todo-item"><div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}');renderOverview()"><i class="ti ti-check"></i></div><div class="todo-text">${t.text}</div></div>`).join('');
+  ot.innerHTML = tt.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-checkbox"></i>All done!</div>' : tt.map(t=>`<div class="todo-item" data-todo-id="${t.id}"><div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}');renderOverview()"><i class="ti ti-check"></i></div><div class="todo-text">${t.text}</div></div>`).join('');
   const og = document.getElementById('ov-goals');
   og.innerHTML = state.goals.slice(0,4).length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-target"></i>No goals set</div>' : state.goals.slice(0,4).map(g=>{const pct=Math.min(100,Math.round((g.current/g.target)*100));const col=catColors[g.cat]||'var(--accent2)';return `<div class="progress-wrap"><div class="progress-head"><span>${g.title}</span><span style="color:${col}">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div></div>`;}).join('');
   const op = document.getElementById('ov-projects');
   const ap = state.projects.filter(p=>p.status==='active').slice(0,3);
   op.innerHTML = ap.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-briefcase"></i>No active projects</div>' : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">${ap.map(p=>`<div style="background:var(--bg3);border-radius:var(--r2);padding:14px"><div style="font-weight:600;font-size:13px;margin-bottom:6px">${p.name}</div><div class="progress-bar" style="margin-bottom:4px"><div class="progress-fill" style="width:${p.progress}%;background:var(--teal)"></div></div><div style="font-size:11px;color:var(--muted)">${p.progress}% complete</div></div>`).join('')}</div>`;
+  if (_animateNext) {
+    countUp(document.getElementById('_ov-tasks'), totalTodos);
+    countUp(document.getElementById('_ov-proj'),  activeProj);
+    animateIn(hero);
+    animateProgressBars(og);
+    animateProgressBars(op);
+  } else {
+    // No animation — just set the values directly
+    const t = document.getElementById('_ov-tasks'); if (t) t.textContent = totalTodos;
+    const p = document.getElementById('_ov-proj');  if (p) p.textContent = activeProj;
+  }
 }
 
 function render() {
   const active = document.querySelector('.page.active');
   if (!active) return;
   const id = active.id.replace('page-','');
-  if (id==='overview') renderOverview();
-  if (id==='health') renderHealth();
-  if (id==='sleep') renderSleep();
-  if (id==='goals') renderGoals();
-  if (id==='todos') renderTodos();
-  if (id==='projects') renderProjects();
-  if (id==='notes') renderNotes();
+  if (id==='overview')  renderOverview();
+  if (id==='health')    renderHealth();
+  if (id==='sleep')     renderSleep();
+  if (id==='goals')     renderGoals();
+  if (id==='todos')     renderTodos();
+  if (id==='projects')  renderProjects();
+  if (id==='notes')     renderNotes();
   if (id==='games') { if (gamesData.length === 0) fetchGames(); else renderGames(); }
+  _animateNext = false;
 }
 
 // === INIT ===
@@ -1002,18 +1166,19 @@ sb.auth.onAuthStateChange((event, session) => {
   if (currentUser) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
+    showSkeletons(); // Shimmer placeholders while Supabase loads
     // Defer DB calls so the auth callback returns first and releases Supabase's
     // internal auth lock — calling them synchronously inside the callback causes
     // every subsequent request to hang waiting for that same lock.
     setTimeout(() =>
       loadFromSupabase()
-        .then(() => { setDate(); render(); })
+        .then(() => { setDate(); _animateNext = true; render(); })
         .catch(err => showError('Failed to load data: ' + err.message))
     , 0);
     // Auto-refresh game CCU every 60 seconds
     if (!_gamesTimer) {
       _gamesTimer = setInterval(() => {
-        if (document.querySelector('.page.active')?.id === 'page-games') fetchGames();
+        if (document.querySelector('.page.active')?.id === 'page-games') fetchGames(true);
       }, 60000);
     }
   } else {
