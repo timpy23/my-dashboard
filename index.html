@@ -880,14 +880,14 @@ let _gamesTimer = null;
 
 async function fetchGames() {
   const ids = GAME_UNIVERSE_IDS.join(',');
-  const proxy = url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const proxy = url => `https://corsproxy.io/?${url}`;
   try {
     const [gRes, tRes] = await Promise.all([
       fetch(proxy(`https://games.roblox.com/v1/games?universeIds=${ids}`)),
       fetch(proxy(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${ids}&size=512x512&format=Png`))
     ]);
-    const gJson  = JSON.parse((await gRes.json()).contents);
-    const tJson  = JSON.parse((await tRes.json()).contents);
+    const gJson  = await gRes.json();
+    const tJson  = await tRes.json();
 
     // Build a quick thumbnail lookup by universeId
     const thumbMap = {};
