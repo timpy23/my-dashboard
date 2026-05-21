@@ -861,7 +861,7 @@ async function saveHealth() {
   try {
     const entry = {
       user_id: currentUser.id,
-      date: new Date().toISOString().split('T')[0],
+      date: localDateStr(),
       steps: parseInt(document.getElementById('h-steps').value) || 0,
       water: Math.round((parseFloat(document.getElementById('h-water').value) || 0) * 10),
       weight: parseFloat(document.getElementById('h-weight').value) || null,
@@ -905,7 +905,7 @@ async function saveSleep() {
   try {
     const entry = {
       user_id: currentUser.id,
-      date: document.getElementById('s-date').value || new Date().toISOString().split('T')[0],
+      date: document.getElementById('s-date').value || localDateStr(),
       hours: parseFloat(document.getElementById('s-hours').value) || null,
       bedtime: document.getElementById('s-bed').value || null,
       wake_time: document.getElementById('s-wake').value || null,
@@ -1297,6 +1297,8 @@ let calView     = 'month'; // 'month' | 'week'
 let calWeekStart = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d; })();
 
 function pad2(n) { return String(n).padStart(2,'0'); }
+// Always returns YYYY-MM-DD in the user's LOCAL timezone (toISOString() gives UTC which is wrong)
+function localDateStr(d = new Date()) { return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
 
 function calNav(dir) {
   if (calView === 'week') {
@@ -1355,7 +1357,7 @@ function renderCalMonth() {
   const firstWeekDay  = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth   = new Date(calYear, calMonth + 1, 0).getDate();
   const daysInPrevMo  = new Date(calYear, calMonth, 0).getDate();
-  const todayStr      = new Date().toISOString().split('T')[0];
+  const todayStr      = localDateStr();
 
   let html = '';
   for (let i = 0; i < 42; i++) {
@@ -1632,7 +1634,7 @@ function renderCalWeek() {
   if (label) label.textContent = `${fmt(ws)} – ${fmt(we)}, ${we.getFullYear()}`;
 
   const now       = new Date();
-  const todayStr  = new Date().toISOString().split('T')[0];
+  const todayStr  = localDateStr();
   const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const HP        = WEEK_HOUR_PX;
 
@@ -1885,7 +1887,7 @@ function openCalModal(eventId, dateStr = null) {
     modalTitle.textContent                              = 'New Event';
     deleteBtn.style.display                             = 'none';
     document.getElementById('cal-title').value         = '';
-    document.getElementById('cal-date').value          = dateStr || new Date().toISOString().split('T')[0];
+    document.getElementById('cal-date').value          = dateStr || localDateStr();
     document.getElementById('cal-start').value         = '';
     document.getElementById('cal-end').value           = '';
     document.getElementById('cal-cat').value           = 'Other';
@@ -1971,7 +1973,7 @@ async function deleteCalEvent() {
 function renderOverviewEvents() {
   const el = document.getElementById('ov-events');
   if (!el) return;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = localDateStr();
   const evs = getEventsForDate(todayStr)
     .sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99'));
   if (evs.length === 0) {
