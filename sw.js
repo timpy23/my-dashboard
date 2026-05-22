@@ -16,6 +16,8 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   // Only cache same-origin assets; let Supabase API calls go straight to network
   if (url.origin !== self.location.origin) return;
+  // Never cache the credentials file — keep it out of the Cache API
+  if (url.pathname.endsWith('/config.js') || url.pathname === '/config.js') return;
 
   e.respondWith(
     fetch(e.request)

@@ -8,11 +8,23 @@
 <meta name="theme-color" content="#7c6af7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- CSP: restricts connections to known origins; object-src/base-uri harden against plugin & base-tag attacks.
+     Note: frame-ancestors only works in an HTTP response header, not a meta tag — add it at your host level. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src  'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+  style-src   'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;
+  font-src    'self' https://cdn.jsdelivr.net https://fonts.gstatic.com;
+  img-src     'self' data: https://*.roblox.com https://*.rbxcdn.com;
+  connect-src 'self' https://*.supabase.co https://corsproxy.io https://games.roblox.com https://thumbnails.roblox.com;
+  object-src  'none';
+  base-uri    'self';
+">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css" integrity="sha384-ccZHbezhtZWmNy0cg8odL0D/jFU5k5HIls9y78Qd6lWor7rpvFIZtK0fTFG4z456" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.1" integrity="sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf" crossorigin="anonymous"></script>
 <script src="config.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -907,8 +919,15 @@ function showError(msg) {
 
 // === DEBOUNCE (for oninput DB writes) ===
 const _debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-const _dbGoal = _debounce((id, val) => sb.from('goals').update({ current: parseFloat(val) || 0 }).eq('id', id), 600);
-const _dbProj = _debounce((id, val) => sb.from('projects').update({ progress: parseInt(val) || 0 }).eq('id', id), 600);
+const _dbGoal = _debounce((id, val) => {
+  const n = parseFloat(val);
+  if (isNaN(n) || n < 0 || n > 1_000_000_000) return; // reject nonsense before hitting DB
+  sb.from('goals').update({ current: n }).eq('id', id);
+}, 600);
+const _dbProj = _debounce((id, val) => {
+  const n = Math.max(0, Math.min(100, parseInt(val) || 0));
+  sb.from('projects').update({ progress: n }).eq('id', id);
+}, 600);
 
 // === INPUT SANITIZATION & XSS HELPERS ===
 // Escape HTML special chars — use in every innerHTML that renders user data
@@ -1164,7 +1183,8 @@ async function saveGoal() {
 function updateGoal(id, val) {
   const g = state.goals.find(g => g.id === id);
   if (!g) return;
-  g.current = parseFloat(val) || 0;
+  const n = parseFloat(val);
+  if (!isNaN(n) && n >= 0 && n <= 1_000_000_000) g.current = n;
   renderGoals();
   _dbGoal(id, val);
 }
@@ -1298,7 +1318,7 @@ async function deleteProject(id) {
 function updateProjectProgress(id, val) {
   const p = state.projects.find(p => p.id === id);
   if (!p) return;
-  p.progress = parseInt(val) || 0;
+  p.progress = Math.max(0, Math.min(100, parseInt(val) || 0));
   _dbProj(id, val);
 }
 function renderProjects() {
@@ -1367,7 +1387,7 @@ async function fetchGames(isRefresh = false) {
     return;
   }
   const ids   = state.games.map(g => g.universe_id).join(',');
-  const proxy = url => `https://corsproxy.io/?${url}`;
+  const proxy = url => `https://corsproxy.io/?${encodeURIComponent(url)}`;
   try {
     const [gRes, tRes] = await Promise.all([
       fetch(proxy(`https://games.roblox.com/v1/games?universeIds=${ids}`)),
@@ -2222,8 +2242,8 @@ function applySettings() {
   // Greeting
   setDate();
 
-  // Sidebar avatar
-  const color = profile.avatarColor || '#7c6af7';
+  // Sidebar avatar — sanitize color coming from DB before setting as inline style
+  const color = sanitizeColor(profile.avatarColor, '#7c6af7');
   const letter = profile.name?.trim()[0]?.toUpperCase() || '';
   ['sidebar-avatar','st-avatar-preview'].forEach(id => {
     const el = document.getElementById(id);
@@ -2251,8 +2271,8 @@ function renderSettings() {
   if (cmEl) cmEl.checked = !!appearance.compactMode;
   const emailEl = document.getElementById('st-email');
   if (emailEl) emailEl.textContent = currentUser?.email || '';
-  // Update avatar preview
-  const color = profile.avatarColor || '#7c6af7';
+  // Update avatar preview — sanitize color from DB before inline style
+  const color = sanitizeColor(profile.avatarColor, '#7c6af7');
   const letter = profile.name?.trim()[0]?.toUpperCase() || '';
   const prev = document.getElementById('st-avatar-preview');
   if (prev) { prev.style.background = color; prev.textContent = letter; }
