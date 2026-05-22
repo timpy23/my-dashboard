@@ -1,0 +1,2 @@
+# Local config — contains real Supabase credentials, never commit
+config.js

@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -800,8 +801,13 @@
 
 <script>
 // === SUPABASE ===
-const SUPABASE_URL = 'https://vqohubvmpffzxsazlxky.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_9Ws7JR6MQx_O6drgmqsbPw_8_BJMxnS';
+if (!window.APP_CONFIG?.supabaseUrl || !window.APP_CONFIG?.supabaseAnonKey) {
+  document.body.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#f87171;background:#0d0d0f;font-size:15px;text-align:center;padding:20px';
+  document.body.textContent = 'Missing config.js — copy config.example.js → config.js and add your Supabase credentials, then refresh.';
+  throw new Error('APP_CONFIG not loaded');
+}
+const SUPABASE_URL     = window.APP_CONFIG.supabaseUrl;
+const SUPABASE_ANON_KEY = window.APP_CONFIG.supabaseAnonKey;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // === STATE ===
@@ -820,8 +826,8 @@ async function sendMagicLink() {
   const email = document.getElementById('login-email').value.trim();
   const msg = document.getElementById('login-msg');
   const btn = document.getElementById('login-btn');
-  if (!email) {
-    msg.textContent = 'Please enter your email address.';
+  if (!email || !isValidEmail(email)) {
+    msg.textContent = 'Please enter a valid email address.';
     msg.className = 'login-msg error';
     msg.style.display = 'block';
     return;
@@ -903,6 +909,32 @@ function showError(msg) {
 const _debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 const _dbGoal = _debounce((id, val) => sb.from('goals').update({ current: parseFloat(val) || 0 }).eq('id', id), 600);
 const _dbProj = _debounce((id, val) => sb.from('projects').update({ progress: parseInt(val) || 0 }).eq('id', id), 600);
+
+// === INPUT SANITIZATION & XSS HELPERS ===
+// Escape HTML special chars — use in every innerHTML that renders user data
+function escapeHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// Trim and hard-cap string length before storing
+function sanitizeText(val, maxLen = 500) {
+  return String(val ?? '').trim().slice(0, maxLen);
+}
+// Reject anything that is not YYYY-MM-DD
+function sanitizeDate(val) {
+  return typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val) ? val : null;
+}
+// Reject anything that is not HH:MM (normalise to 5-char form)
+function sanitizeTime(val) {
+  return typeof val === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(val) ? val.slice(0, 5) : null;
+}
+// Reject anything that is not a 6-digit hex colour
+function sanitizeColor(val, fallback = '#7c6af7') {
+  return typeof val === 'string' && /^#[0-9a-fA-F]{6}$/.test(val) ? val : fallback;
+}
+// Very basic email format check
+function isValidEmail(val) {
+  return typeof val === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+}
 
 // === ANIMATION HELPERS ===
 let _animateNext = false; // set true in nav() and initial load; cleared by render()
@@ -1019,14 +1051,16 @@ async function saveHealth() {
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
   if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
+    const _hWeight = parseFloat(document.getElementById('h-weight').value);
+    const _hMood   = parseInt(document.getElementById('h-mood').value);
     const entry = {
       user_id: currentUser.id,
-      date: localDateStr(),
-      steps: parseInt(document.getElementById('h-steps').value) || 0,
-      water: Math.round((parseFloat(document.getElementById('h-water').value) || 0) * 10),
-      weight: parseFloat(document.getElementById('h-weight').value) || null,
-      mood: parseInt(document.getElementById('h-mood').value) || null,
-      notes: document.getElementById('h-notes').value
+      date:    localDateStr(),
+      steps:   Math.max(0, Math.min(100000, parseInt(document.getElementById('h-steps').value) || 0)),
+      water:   Math.max(0, Math.min(200,    Math.round((parseFloat(document.getElementById('h-water').value) || 0) * 10))),
+      weight:  (!isNaN(_hWeight) && _hWeight > 0 && _hWeight < 500) ? _hWeight : null,
+      mood:    (_hMood >= 1 && _hMood <= 10) ? _hMood : null,
+      notes:   sanitizeText(document.getElementById('h-notes').value, 1000)
     };
     const { data, error } = await sb.from('health').insert(entry).select().single();
     if (error) throw error;
@@ -1063,13 +1097,15 @@ async function saveSleep() {
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
   if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
+    const _sHours = parseFloat(document.getElementById('s-hours').value);
+    const _sQual  = parseInt(document.getElementById('s-quality').value);
     const entry = {
-      user_id: currentUser.id,
-      date: document.getElementById('s-date').value || localDateStr(),
-      hours: parseFloat(document.getElementById('s-hours').value) || null,
-      bedtime: document.getElementById('s-bed').value || null,
-      wake_time: document.getElementById('s-wake').value || null,
-      quality: parseInt(document.getElementById('s-quality').value) || null
+      user_id:   currentUser.id,
+      date:      sanitizeDate(document.getElementById('s-date').value) || localDateStr(),
+      hours:     (!isNaN(_sHours) && _sHours >= 0 && _sHours <= 24) ? _sHours : null,
+      bedtime:   sanitizeTime(document.getElementById('s-bed').value)  || null,
+      wake_time: sanitizeTime(document.getElementById('s-wake').value) || null,
+      quality:   (_sQual >= 1 && _sQual <= 5) ? _sQual : null
     };
     const { data, error } = await sb.from('sleep').insert(entry).select().single();
     if (error) throw error;
@@ -1105,17 +1141,17 @@ async function saveGoal() {
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
   if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
-    const title = document.getElementById('g-title').value;
+    const title = sanitizeText(document.getElementById('g-title').value, 200);
     if (!title) { resetBtn(); return; }
     const entry = {
-      user_id: currentUser.id,
+      user_id:  currentUser.id,
       title,
-      category: document.getElementById('g-cat').value,
-      target: parseFloat(document.getElementById('g-target').value) || 100,
-      current: parseFloat(document.getElementById('g-current').value) || 0,
-      unit: document.getElementById('g-unit').value,
-      deadline: document.getElementById('g-deadline').value || null,
-      done: false
+      category: sanitizeText(document.getElementById('g-cat').value, 50),
+      target:   Math.max(0, parseFloat(document.getElementById('g-target').value) || 100),
+      current:  Math.max(0, parseFloat(document.getElementById('g-current').value) || 0),
+      unit:     sanitizeText(document.getElementById('g-unit').value, 50),
+      deadline: sanitizeDate(document.getElementById('g-deadline').value) || null,
+      done:     false
     };
     const { data, error } = await sb.from('goals').insert(entry).select().single();
     if (error) throw error;
@@ -1145,7 +1181,7 @@ function renderGoals() {
   el.innerHTML = state.goals.map(g => {
     const pct = Math.min(100,Math.round((g.current/g.target)*100));
     const col = catColors[g.cat]||'var(--accent2)';
-    return `<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div><span style="font-size:11px;color:${col};font-weight:600;text-transform:uppercase;letter-spacing:0.8px">${g.cat}</span><div style="font-family:var(--font-h);font-size:15px;font-weight:600;margin-top:2px">${g.title}</div></div><div style="display:flex;align-items:center;gap:8px">${g.deadline?`<span style="font-size:11px;color:var(--muted)">📅 ${g.deadline}</span>`:''}<button class="btn" style="padding:4px 8px;font-size:12px" onclick="deleteGoal('${g.id}')"><i class="ti ti-trash"></i></button></div></div><div class="progress-head"><span style="font-size:12px;color:var(--muted)">${g.current} / ${g.target} ${g.unit}</span><span style="font-size:13px;font-weight:600;color:${col}">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div><div style="margin-top:12px;display:flex;align-items:center;gap:8px"><label style="margin:0;font-size:12px;color:var(--muted);white-space:nowrap">Update:</label><input type="number" value="${g.current}" style="max-width:100px" oninput="updateGoal('${g.id}',this.value)"><span style="font-size:12px;color:var(--muted)">${g.unit}</span></div></div>`;
+    return `<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div><span style="font-size:11px;color:${col};font-weight:600;text-transform:uppercase;letter-spacing:0.8px">${escapeHtml(g.cat)}</span><div style="font-family:var(--font-h);font-size:15px;font-weight:600;margin-top:2px">${escapeHtml(g.title)}</div></div><div style="display:flex;align-items:center;gap:8px">${g.deadline?`<span style="font-size:11px;color:var(--muted)">📅 ${escapeHtml(g.deadline)}</span>`:''}<button class="btn" style="padding:4px 8px;font-size:12px" onclick="deleteGoal('${g.id}')"><i class="ti ti-trash"></i></button></div></div><div class="progress-head"><span style="font-size:12px;color:var(--muted)">${g.current} / ${g.target} ${escapeHtml(g.unit)}</span><span style="font-size:13px;font-weight:600;color:${col}">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div><div style="margin-top:12px;display:flex;align-items:center;gap:8px"><label style="margin:0;font-size:12px;color:var(--muted);white-space:nowrap">Update:</label><input type="number" value="${g.current}" style="max-width:100px" oninput="updateGoal('${g.id}',this.value)"><span style="font-size:12px;color:var(--muted)">${escapeHtml(g.unit)}</span></div></div>`;
   }).join('');
   if (_animateNext) { animateIn(el); animateProgressBars(el); }
 }
@@ -1158,15 +1194,16 @@ async function saveTodo() {
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
   if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
-    const text = document.getElementById('t-text').value;
+    const text = sanitizeText(document.getElementById('t-text').value, 500);
     if (!text) { resetBtn(); return; }
+    const _tPri = document.getElementById('t-priority').value;
     const entry = {
-      user_id: currentUser.id,
+      user_id:  currentUser.id,
       text,
-      priority: document.getElementById('t-priority').value,
-      due_date: document.getElementById('t-due').value || null,
-      project: document.getElementById('t-project').value,
-      done: false
+      priority: ['high','med','low'].includes(_tPri) ? _tPri : 'med',
+      due_date: sanitizeDate(document.getElementById('t-due').value) || null,
+      project:  sanitizeText(document.getElementById('t-project').value, 100),
+      done:     false
     };
     const { data, error } = await sb.from('todos').insert(entry).select().single();
     if (error) throw error;
@@ -1212,7 +1249,7 @@ function filterTodos(f) {
 function renderTodoItem(t) {
   const pc = {high:'p-high',med:'p-med',low:'p-low'}[t.priority]||'p-low';
   const pl = {high:'High',med:'Med',low:'Low'}[t.priority]||'Low';
-  return `<div class="todo-item" data-todo-id="${t.id}"><div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}')"><i class="ti ti-check"></i></div><div style="flex:1"><div class="todo-text ${t.done?'done':''}">${t.text}</div><div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap"><span class="todo-priority ${pc}">${pl}</span>${t.due?`<span style="font-size:11px;color:var(--muted)">📅 ${t.due}</span>`:''}${t.project?`<span style="font-size:11px;color:var(--muted)">📁 ${t.project}</span>`:''}</div></div><i class="ti ti-x todo-del" onclick="deleteTodo('${t.id}')"></i></div>`;
+  return `<div class="todo-item" data-todo-id="${t.id}"><div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}')"><i class="ti ti-check"></i></div><div style="flex:1"><div class="todo-text ${t.done?'done':''}">${escapeHtml(t.text)}</div><div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap"><span class="todo-priority ${pc}">${pl}</span>${t.due?`<span style="font-size:11px;color:var(--muted)">📅 ${escapeHtml(t.due)}</span>`:''}${t.project?`<span style="font-size:11px;color:var(--muted)">📁 ${escapeHtml(t.project)}</span>`:''}</div></div><i class="ti ti-x todo-del" onclick="deleteTodo('${t.id}')"></i></div>`;
 }
 function renderTodos() {
   let open = state.todos.filter(t=>!t.done);
@@ -1232,17 +1269,18 @@ async function saveProject() {
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
   if (!currentUser) { resetBtn(); showError('Not signed in — please refresh and log in again.'); return; }
   try {
-    const name = document.getElementById('p-name').value;
+    const name = sanitizeText(document.getElementById('p-name').value, 200);
     if (!name) { resetBtn(); return; }
+    const _pStat = document.getElementById('p-status').value;
     const entry = {
-      user_id: currentUser.id,
+      user_id:     currentUser.id,
       name,
-      description: document.getElementById('p-desc').value,
-      status: document.getElementById('p-status').value,
-      progress: parseInt(document.getElementById('p-prog').value) || 0,
-      start_date: document.getElementById('p-start').value || null,
-      end_date: document.getElementById('p-end').value || null,
-      tags: document.getElementById('p-tags').value.split(',').map(t=>t.trim()).filter(Boolean)
+      description: sanitizeText(document.getElementById('p-desc').value, 2000),
+      status:      ['active','paused','done'].includes(_pStat) ? _pStat : 'active',
+      progress:    Math.max(0, Math.min(100, parseInt(document.getElementById('p-prog').value) || 0)),
+      start_date:  sanitizeDate(document.getElementById('p-start').value) || null,
+      end_date:    sanitizeDate(document.getElementById('p-end').value)   || null,
+      tags:        document.getElementById('p-tags').value.split(',').map(t => sanitizeText(t, 50)).filter(Boolean).slice(0, 10)
     };
     const { data, error } = await sb.from('projects').insert(entry).select().single();
     if (error) throw error;
@@ -1270,7 +1308,7 @@ function renderProjects() {
   el.innerHTML = state.projects.map(p => {
     const sc = {active:'s-active',paused:'s-paused',done:'s-done'}[p.status]||'s-active';
     const col = {active:'var(--teal)',paused:'var(--amber)',done:'var(--accent2)'}[p.status]||'var(--teal)';
-    return `<div class="project-card"><div class="project-head"><div class="project-name">${p.name}</div><div style="display:flex;gap:6px;align-items:center"><span class="project-status ${sc}">${p.status}</span><button class="btn" style="padding:4px 8px" onclick="deleteProject('${p.id}')"><i class="ti ti-trash"></i></button></div></div>${p.desc?`<div class="project-desc">${p.desc}</div>`:''}<div class="progress-head"><span style="font-size:12px;color:var(--muted)">Progress</span><span style="font-size:13px;font-weight:600;color:${col}">${p.progress}%</span></div><div class="progress-bar" style="margin-bottom:12px"><div class="progress-fill" style="width:${p.progress}%;background:${col}"></div></div><input type="range" min="0" max="100" value="${p.progress}" step="1" style="margin-bottom:12px" oninput="this.previousElementSibling.previousElementSibling.children[1].textContent=this.value+'%';this.previousElementSibling.children[0].style.width=this.value+'%';updateProjectProgress('${p.id}',this.value)">${p.tags.length?`<div>${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>`:''}<div class="project-meta" style="margin-top:10px">${p.start?`<span><i class="ti ti-calendar"></i>${p.start}</span>`:''}${p.end?`<span><i class="ti ti-flag"></i>${p.end}</span>`:''}</div></div>`;
+    return `<div class="project-card"><div class="project-head"><div class="project-name">${escapeHtml(p.name)}</div><div style="display:flex;gap:6px;align-items:center"><span class="project-status ${sc}">${escapeHtml(p.status)}</span><button class="btn" style="padding:4px 8px" onclick="deleteProject('${p.id}')"><i class="ti ti-trash"></i></button></div></div>${p.desc?`<div class="project-desc">${escapeHtml(p.desc)}</div>`:''}<div class="progress-head"><span style="font-size:12px;color:var(--muted)">Progress</span><span style="font-size:13px;font-weight:600;color:${col}">${p.progress}%</span></div><div class="progress-bar" style="margin-bottom:12px"><div class="progress-fill" style="width:${p.progress}%;background:${col}"></div></div><input type="range" min="0" max="100" value="${p.progress}" step="1" style="margin-bottom:12px" oninput="this.previousElementSibling.previousElementSibling.children[1].textContent=this.value+'%';this.previousElementSibling.children[0].style.width=this.value+'%';updateProjectProgress('${p.id}',this.value)">${p.tags.length?`<div>${p.tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>`:''}<div class="project-meta" style="margin-top:10px">${p.start?`<span><i class="ti ti-calendar"></i>${escapeHtml(p.start)}</span>`:''}${p.end?`<span><i class="ti ti-flag"></i>${escapeHtml(p.end)}</span>`:''}</div></div>`;
   }).join('');
   if (_animateNext) { animateIn(el); animateProgressBars(el); }
 }
@@ -1285,9 +1323,9 @@ async function saveNote() {
   try {
     const entry = {
       user_id: currentUser.id,
-      title: document.getElementById('n-title').value || 'Note',
-      body: document.getElementById('n-body').value,
-      color: selectedNoteColor
+      title:   sanitizeText(document.getElementById('n-title').value || 'Note', 200),
+      body:    sanitizeText(document.getElementById('n-body').value, 10000),
+      color:   sanitizeColor(selectedNoteColor, '#1a1a1e')
     };
     const { data, error } = await sb.from('notes').insert(entry).select().single();
     if (error) throw error;
@@ -1308,7 +1346,7 @@ function renderNotes() {
   const el = document.getElementById('notes-grid');
   if (!el) return;
   if (state.notes.length===0) { el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-notes"></i><div>No notes yet</div></div>'; return; }
-  el.innerHTML = state.notes.map(n=>`<div style="background:${n.color||'var(--bg2)'};border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative"><button class="btn" style="position:absolute;top:10px;right:10px;padding:3px 6px;opacity:0.5" onclick="deleteNote('${n.id}')"><i class="ti ti-x" style="font-size:13px"></i></button><div style="font-family:var(--font-h);font-size:14px;font-weight:600;margin-bottom:8px;padding-right:30px">${n.title}</div><div style="font-size:13px;color:var(--muted);white-space:pre-wrap;line-height:1.6">${n.body}</div><div style="font-size:11px;color:var(--muted);margin-top:12px;opacity:0.6">${n.created}</div></div>`).join('');
+  el.innerHTML = state.notes.map(n=>`<div style="background:${sanitizeColor(n.color||'#1a1a1e','#1a1a1e')};border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative"><button class="btn" style="position:absolute;top:10px;right:10px;padding:3px 6px;opacity:0.5" onclick="deleteNote('${n.id}')"><i class="ti ti-x" style="font-size:13px"></i></button><div style="font-family:var(--font-h);font-size:14px;font-weight:600;margin-bottom:8px;padding-right:30px">${escapeHtml(n.title)}</div><div style="font-size:13px;color:var(--muted);white-space:pre-wrap;line-height:1.6">${escapeHtml(n.body)}</div><div style="font-size:11px;color:var(--muted);margin-top:12px;opacity:0.6">${n.created}</div></div>`).join('');
   if (_animateNext) animateIn(el);
 }
 
@@ -1379,13 +1417,13 @@ function renderGames(flash = false) {
     const visits = g.visits >= 1e9 ? (g.visits/1e9).toFixed(1)+'B' : g.visits >= 1e6 ? (g.visits/1e6).toFixed(1)+'M' : (g.visits||0).toLocaleString();
     return `<div class="game-card" style="position:relative">
       <div class="game-thumb">
-        ${g.thumbnail
-          ? `<img src="${g.thumbnail}" alt="${g.name}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=game-thumb-placeholder><i class=\\"ti ti-device-gamepad-2\\"></i></div>'">`
+        ${g.thumbnail && /^https?:\/\//.test(g.thumbnail)
+          ? `<img src="${escapeHtml(g.thumbnail)}" alt="${escapeHtml(g.name)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=game-thumb-placeholder><i class=\\"ti ti-device-gamepad-2\\"></i></div>'">`
           : '<div class="game-thumb-placeholder"><i class="ti ti-device-gamepad-2"></i></div>'}
       </div>
       <div class="game-info">
         <button class="btn" style="position:absolute;top:8px;right:8px;padding:3px 7px;opacity:0.7;z-index:2" onclick="removeGame('${g._supabaseId}')"><i class="ti ti-x" style="font-size:13px"></i></button>
-        <div class="game-name" title="${g.name}" style="padding-right:32px">${g.name}</div>
+        <div class="game-name" title="${escapeHtml(g.name)}" style="padding-right:32px">${escapeHtml(g.name)}</div>
         <div class="game-ccu"><span class="ccu-dot"></span>${(g.playing||0).toLocaleString()}<span style="font-size:13px;font-weight:400;color:var(--muted);margin-left:2px">playing</span></div>
         <div class="game-meta">
           <span><i class="ti ti-eye"></i>${visits} visits</span>
@@ -1414,7 +1452,7 @@ function renderGames(flash = false) {
 
 async function addGame() {
   const uid = parseInt(document.getElementById('ag-uid').value);
-  if (!uid || isNaN(uid)) return;
+  if (!uid || isNaN(uid) || uid <= 0 || uid > 9_999_999_999_999) return;
   if (state.games.some(g => g.universe_id === uid || String(g.universe_id) === String(uid))) { showError('Game already added'); return; }
   const btn = document.querySelector('#addGameModal .btn-primary');
   if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
@@ -1562,9 +1600,9 @@ function renderCalMonth() {
     const isToday = dateStr === todayStr;
     const evs     = isOther ? [] : getEventsForDate(dateStr);
     const chips   = evs.slice(0, 3).map(ev =>
-      `<div class="cal-chip" style="background:${ev.color||'#7c6af7'}"
+      `<div class="cal-chip" style="background:${sanitizeColor(ev.color||'#7c6af7','#7c6af7')}"
             onclick="event.stopPropagation();openCalModal('${ev.id}')"
-            title="${ev.title.replace(/"/g,'&quot;')}">${ev.title}</div>`
+            title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)}</div>`
     ).join('');
     const more = evs.length > 3 ? `<div class="cal-more">+${evs.length - 3} more</div>` : '';
     html += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}"
@@ -1768,7 +1806,7 @@ function _dismissQuickCreate() {
 
 async function saveQuickCreate() {
   if (!_quickCreate || !currentUser) return;
-  const title = document.getElementById('calQcTitle')?.value.trim();
+  const title = sanitizeText(document.getElementById('calQcTitle')?.value, 200);
   if (!title) { document.getElementById('calQcTitle')?.focus(); return; }
 
   const btn = document.querySelector('#calQcPopup .btn-primary');
@@ -1776,14 +1814,15 @@ async function saveQuickCreate() {
 
   try {
     const { dateStr, startMins, endMins, color } = _quickCreate;
+    const _qqCat = document.getElementById('calQcCat')?.value || 'Other';
     const entry = {
       user_id:    currentUser.id,
       title,
       date:       dateStr,
       start_time: `${pad2(Math.floor(startMins/60))}:${pad2(startMins%60)}`,
       end_time:   `${pad2(Math.floor(endMins/60))}:${pad2(endMins%60)}`,
-      color,
-      category:   document.getElementById('calQcCat')?.value || 'Other',
+      color:      sanitizeColor(color, CAL_COLORS[0]),
+      category:   ['Work','Gym','Free Time','Other','Sleep'].includes(_qqCat) ? _qqCat : 'Other',
       repeat:     'none',
       notes:      ''
     };
@@ -1891,8 +1930,8 @@ function renderCalWeek() {
       ${days.map(day => `
         <div class="cal-wv-allday-col${day.isToday ? ' today' : ''}">
           ${day.allDay.map(ev =>
-            `<div class="cal-chip" style="background:${ev.color||'#7c6af7'};margin-bottom:2px"
-                  onclick="event.stopPropagation();openCalModal('${ev.id}')">${ev.title}</div>`
+            `<div class="cal-chip" style="background:${sanitizeColor(ev.color||'#7c6af7','#7c6af7')};margin-bottom:2px"
+                  onclick="event.stopPropagation();openCalModal('${ev.id}')">${escapeHtml(ev.title)}</div>`
           ).join('')}
         </div>`).join('')}
     </div>` : '';
@@ -1911,10 +1950,10 @@ function renderCalWeek() {
       const width  = `calc(${(1 / _numCols) * 100}% - 3px)`;
       const timeStr = ev.start_time.slice(0, 5) + (ev.end_time ? ' – ' + ev.end_time.slice(0, 5) : '');
       return `<div class="cal-timed-event"
-                   style="top:${top.toFixed(1)}px;height:${height.toFixed(1)}px;left:${left};width:${width};background:${ev.color||'#7c6af7'}"
+                   style="top:${top.toFixed(1)}px;height:${height.toFixed(1)}px;left:${left};width:${width};background:${sanitizeColor(ev.color||'#7c6af7','#7c6af7')}"
                    onclick="event.stopPropagation();openCalModal('${ev.id}')">
         ${height >= 18 ? `<div class="cal-te-time">${timeStr}</div>` : ''}
-        ${height >= 28 ? `<div class="cal-te-title">${ev.title}</div>` : ''}
+        ${height >= 28 ? `<div class="cal-te-title">${escapeHtml(ev.title)}</div>` : ''}
       </div>`;
     }).join('');
 
@@ -2102,20 +2141,22 @@ async function saveCalEvent() {
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = orig; } };
   if (!currentUser) { resetBtn(); showError('Not signed in — please refresh.'); return; }
 
-  const title = document.getElementById('cal-title').value.trim();
+  const title = sanitizeText(document.getElementById('cal-title').value, 200);
   if (!title) { resetBtn(); return; }
+  const _cCat = document.getElementById('cal-cat').value;
+  const _cRep = document.getElementById('cal-repeat').value;
 
   try {
     const entry = {
       user_id:    currentUser.id,
       title,
-      date:       document.getElementById('cal-date').value,
-      start_time: document.getElementById('cal-start').value  || null,
-      end_time:   document.getElementById('cal-end').value    || null,
-      color:      calSelColor,
-      category:   document.getElementById('cal-cat').value,
-      repeat:     document.getElementById('cal-repeat').value,
-      notes:      document.getElementById('cal-notes').value,
+      date:       sanitizeDate(document.getElementById('cal-date').value)  || localDateStr(),
+      start_time: sanitizeTime(document.getElementById('cal-start').value) || null,
+      end_time:   sanitizeTime(document.getElementById('cal-end').value)   || null,
+      color:      sanitizeColor(calSelColor, CAL_COLORS[0]),
+      category:   ['Work','Gym','Free Time','Other','Sleep'].includes(_cCat) ? _cCat : 'Other',
+      repeat:     ['none','daily','weekly','monthly'].includes(_cRep) ? _cRep : 'none',
+      notes:      sanitizeText(document.getElementById('cal-notes').value, 2000),
     };
 
     if (calEditId) {
@@ -2223,6 +2264,8 @@ function updateFeature(key, val) {
   _dbSettings();
 }
 function updateProfile(key, val) {
+  if (key === 'name')        val = sanitizeText(val, 100);
+  if (key === 'avatarColor') val = sanitizeColor(val, '#7c6af7');
   userSettings.profile[key] = val;
   applySettings();
   _dbSettings();
@@ -2246,12 +2289,12 @@ function renderOverviewEvents() {
   }
   el.innerHTML = evs.map(ev =>
     `<div class="ov-event-item" onclick="nav('calendar');openCalModal('${ev.id}')">
-       <div class="ov-event-dot" style="background:${ev.color||'#7c6af7'}"></div>
+       <div class="ov-event-dot" style="background:${sanitizeColor(ev.color||'#7c6af7','#7c6af7')}"></div>
        <div style="flex:1;min-width:0">
-         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.title}</div>
+         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(ev.title)}</div>
          <div style="font-size:11px;color:var(--muted);margin-top:2px">${ev.start_time ? ev.start_time.slice(0,5) : 'All day'}${ev.end_time ? ' – ' + ev.end_time.slice(0,5) : ''}</div>
        </div>
-       <span style="font-size:10px;padding:2px 6px;border-radius:3px;font-weight:600;background:${CAT_COLORS[ev.category]||CAL_COLORS[0]};color:rgba(255,255,255,0.9);flex-shrink:0">${ev.category}</span>
+       <span style="font-size:10px;padding:2px 6px;border-radius:3px;font-weight:600;background:${CAT_COLORS[ev.category]||CAL_COLORS[0]};color:rgba(255,255,255,0.9);flex-shrink:0">${escapeHtml(ev.category)}</span>
      </div>`
   ).join('');
   if (_animateNext) animateIn(el, 50);
@@ -2285,12 +2328,12 @@ function renderOverview() {
     <div class="stat-card"><div class="stat-label">Live Players</div><div class="stat-val stat-green" id="_ov-ccu">${totalCCU > 0 ? totalCCU.toLocaleString() : '—'}</div><div class="stat-sub">Across all games</div></div>`;
   const ot = document.getElementById('ov-todos');
   const tt = state.todos.filter(t=>!t.done).slice(0,5);
-  ot.innerHTML = tt.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-checkbox"></i>All done!</div>' : tt.map(t=>`<div class="todo-item" data-todo-id="${t.id}"><div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}');renderOverview()"><i class="ti ti-check"></i></div><div class="todo-text">${t.text}</div></div>`).join('');
+  ot.innerHTML = tt.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-checkbox"></i>All done!</div>' : tt.map(t=>`<div class="todo-item" data-todo-id="${t.id}"><div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}');renderOverview()"><i class="ti ti-check"></i></div><div class="todo-text">${escapeHtml(t.text)}</div></div>`).join('');
   const og = document.getElementById('ov-goals');
-  og.innerHTML = state.goals.slice(0,4).length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-target"></i>No goals set</div>' : state.goals.slice(0,4).map(g=>{const pct=Math.min(100,Math.round((g.current/g.target)*100));const col=catColors[g.cat]||'var(--accent2)';return `<div class="progress-wrap"><div class="progress-head"><span>${g.title}</span><span style="color:${col}">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div></div>`;}).join('');
+  og.innerHTML = state.goals.slice(0,4).length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-target"></i>No goals set</div>' : state.goals.slice(0,4).map(g=>{const pct=Math.min(100,Math.round((g.current/g.target)*100));const col=catColors[g.cat]||'var(--accent2)';return `<div class="progress-wrap"><div class="progress-head"><span>${escapeHtml(g.title)}</span><span style="color:${col}">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div></div>`;}).join('');
   const op = document.getElementById('ov-projects');
   const ap = state.projects.filter(p=>p.status==='active').slice(0,3);
-  op.innerHTML = ap.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-briefcase"></i>No active projects</div>' : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">${ap.map(p=>`<div style="background:var(--bg3);border-radius:var(--r2);padding:14px"><div style="font-weight:600;font-size:13px;margin-bottom:6px">${p.name}</div><div class="progress-bar" style="margin-bottom:4px"><div class="progress-fill" style="width:${p.progress}%;background:var(--teal)"></div></div><div style="font-size:11px;color:var(--muted)">${p.progress}% complete</div></div>`).join('')}</div>`;
+  op.innerHTML = ap.length===0 ? '<div class="empty-state" style="padding:20px"><i class="ti ti-briefcase"></i>No active projects</div>' : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">${ap.map(p=>`<div style="background:var(--bg3);border-radius:var(--r2);padding:14px"><div style="font-weight:600;font-size:13px;margin-bottom:6px">${escapeHtml(p.name)}</div><div class="progress-bar" style="margin-bottom:4px"><div class="progress-fill" style="width:${p.progress}%;background:var(--teal)"></div></div><div style="font-size:11px;color:var(--muted)">${p.progress}% complete</div></div>`).join('')}</div>`;
   renderOverviewEvents();
   if (_animateNext) {
     countUp(document.getElementById('_ov-tasks'), totalTodos);
