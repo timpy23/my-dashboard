@@ -1,2 +1,2 @@
-# Local config — contains real Supabase credentials, never commit
-config.js
+# config.js is committed — Supabase anon key is a publishable key (sb_publishable_*),
+# safe in client-side code. Security is enforced via Supabase Row Level Security.
